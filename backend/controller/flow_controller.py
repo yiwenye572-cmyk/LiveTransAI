@@ -68,7 +68,14 @@ class FlowController:
     async def _run_summary(self) -> None:
         self._summary_running = True
         try:
-            await self.summary_updater.update(self.state)
+            updated = await self.summary_updater.update(self.state)
+            if updated:
+                await self.bus.publish(
+                    "summary_update",
+                    self.state.running_summary.to_ws_payload(
+                        sentence_count=self.state.sentence_count,
+                    ),
+                )
         except Exception:
             logger.exception("Summary run failed")
         finally:

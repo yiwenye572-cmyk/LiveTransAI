@@ -3,6 +3,10 @@ const WS_URL = `ws://${window.location.hostname}:8765/stream`;
 const statusBadge = document.getElementById("status-badge");
 const subtitleList = document.getElementById("subtitle-list");
 const metricsBar = document.getElementById("metrics-bar");
+const summaryMeta = document.getElementById("summary-meta");
+const summaryTopic = document.getElementById("summary-topic");
+const summaryTerms = document.getElementById("summary-terms");
+const summaryBullets = document.getElementById("summary-bullets");
 const btnStart = document.getElementById("btn-start");
 const btnStop = document.getElementById("btn-stop");
 
@@ -88,6 +92,40 @@ function updateMetrics(payload) {
   metricsBar.textContent = `已翻译: ${sentenceCount} 句 · 已修正: ${correctionCount} 处`;
 }
 
+function renderSummary(payload) {
+  const at = payload.updated_at_sentence ?? 0;
+  summaryMeta.textContent = at > 0 ? `已更新至第 ${at} 句` : "等待更新…";
+
+  const topic = (payload.topic || "").trim();
+  summaryTopic.textContent = topic ? `主题：${topic}` : "主题：—";
+
+  const terms = payload.term_map || {};
+  const termEntries = Object.entries(terms);
+  if (termEntries.length === 0) {
+    summaryTerms.textContent = "";
+  } else {
+    summaryTerms.innerHTML = termEntries
+      .map(([source, target]) => `<span class="summary-term">${escapeHtml(source)} → ${escapeHtml(target)}</span>`)
+      .join("");
+  }
+
+  summaryBullets.innerHTML = "";
+  for (const point of payload.bullet_points || []) {
+    const li = document.createElement("li");
+    li.textContent = point;
+    summaryBullets.appendChild(li);
+  }
+}
+
+function resetSummary() {
+  renderSummary({
+    topic: "",
+    term_map: {},
+    bullet_points: [],
+    updated_at_sentence: 0,
+  });
+}
+
 function escapeHtml(text) {
   return text
     .replaceAll("&", "&amp;")
@@ -119,6 +157,10 @@ function connect() {
       applyCorrection(payload);
       return;
     }
+    if (payload.type === "summary") {
+      renderSummary(payload);
+      return;
+    }
     if (payload.type === "metrics") {
       updateMetrics(payload);
     }
@@ -134,4 +176,5 @@ btnStart.addEventListener("click", () => sendCommand("start"));
 btnStop.addEventListener("click", () => sendCommand("stop"));
 
 renderEmptyState();
+resetSummary();
 connect();
