@@ -49,3 +49,25 @@ Send the recorded file to AST:
 ```bash
 python -m backend.smoke_ast --audio tmp\loopback_test.wav
 ```
+
+## Realtime AST Stream
+
+Stream loopback audio directly to AST without writing a wav file:
+
+```bash
+python -m backend.smoke_realtime_ast --seconds 10
+```
+
+While it runs, play English audio on your computer. You should see subtitle events printed in real time.
+
+For automated testing without manual playback:
+
+```bash
+python -m backend.smoke_realtime_ast --seconds 8 --play-sample
+```
+
+Override the capture device if needed:
+
+```bash
+python -m backend.smoke_realtime_ast --device-index -100 --seconds 10
+```
