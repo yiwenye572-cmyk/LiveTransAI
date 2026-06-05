@@ -1,5 +1,6 @@
 import argparse
 import asyncio
+import sys
 from pathlib import Path
 
 from backend.config import ConfigError, load_ast_config
@@ -14,6 +15,11 @@ TEXT_EVENTS = {
     "TranslationSubtitleResponse",
     "TranslationSubtitleEnd",
 }
+
+
+def configure_stdout() -> None:
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
 async def run(audio_path: Path) -> None:
@@ -43,6 +49,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
+    configure_stdout()
     args = parse_args()
     try:
         asyncio.run(run(args.audio))

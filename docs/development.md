@@ -19,3 +19,19 @@ python -m backend.smoke_ast --audio ast_python\test_audio.wav
 ```
 
 The expected result is a `SessionStarted` event followed by source and translation subtitle events.
+
+## Audio Capture Smoke Test
+
+List local audio devices and the selected capture source:
+
+```bash
+python -m backend.smoke_audio --list
+```
+
+Record a short loopback test file:
+
+```bash
+python -m backend.smoke_audio --record --seconds 5 --out tmp\loopback_test.wav
+```
+
+On Windows, the selected source should usually be a WASAPI output device used in loopback mode.
