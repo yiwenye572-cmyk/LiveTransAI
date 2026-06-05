@@ -111,6 +111,20 @@ h1 {
   font-size: 1.05rem;
 }
 
+.subtitle-corrected {
+  border-color: #3d5afe;
+}
+
+.translation-old {
+  text-decoration: line-through;
+  color: #9aa0a6;
+  margin-right: 8px;
+}
+
+.translation-new {
+  color: #8ab4f8;
+}
+
 .metrics-bar {
   margin-bottom: 12px;
   color: #9aa0a6;

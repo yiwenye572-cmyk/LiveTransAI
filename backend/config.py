@@ -27,6 +27,14 @@ class ASTConfig:
         return int(self.sample_rate * self.chunk_ms / 1000) * bytes_per_sample * self.channels
 
 
+@dataclass(frozen=True)
+class DeepSeekConfig:
+    api_key: str
+    base_url: str = "https://api.deepseek.com"
+    model: str = "deepseek-chat"
+    timeout_sec: float = 45.0
+
+
 def load_ast_config() -> ASTConfig:
     load_dotenv()
 
@@ -41,4 +49,18 @@ def load_ast_config() -> ASTConfig:
         mode=os.getenv("AST_MODE", ASTConfig.mode).strip(),
         source_language=os.getenv("SOURCE_LANGUAGE", ASTConfig.source_language).strip(),
         target_language=os.getenv("TARGET_LANGUAGE", ASTConfig.target_language).strip(),
+    )
+
+
+def load_deepseek_config() -> DeepSeekConfig | None:
+    load_dotenv()
+
+    api_key = os.getenv("DEEPSEEK_API_KEY", "").strip()
+    if not api_key or api_key == "your-deepseek-api-key":
+        return None
+
+    return DeepSeekConfig(
+        api_key=api_key,
+        base_url=os.getenv("DEEPSEEK_BASE_URL", DeepSeekConfig.base_url).strip(),
+        model=os.getenv("DEEPSEEK_MODEL", DeepSeekConfig.model).strip(),
     )

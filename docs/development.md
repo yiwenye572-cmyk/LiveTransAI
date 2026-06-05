@@ -12,7 +12,7 @@ python -m venv .venv
 pip install -r backend\requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 ```
 
-2. Copy `.env.example` to `.env` and fill `DOUBAO_API_KEY`.
+2. Copy `.env.example` to `.env` and fill `DOUBAO_API_KEY`. For async correction, also set `DEEPSEEK_API_KEY` from [DeepSeek Platform](https://platform.deepseek.com/api_keys).
 
 3. Run the smoke test from the repository root:
 
@@ -89,3 +89,20 @@ http://127.0.0.1:8765
 ```
 
 Click **开始翻译**, then play English audio on your computer. Subtitles should appear in the page in real time.
+
+## Async Correction (DeepSeek)
+
+The Web UI uses a minimal dual-channel pipeline:
+
+- **Fast path**: Doubao AST subtitles appear immediately.
+- **Slow path**: After at least 3 sentences and 8 seconds between runs, the backend calls DeepSeek official API to review recent translations and may push `correction` events to the browser.
+
+If `DEEPSEEK_API_KEY` is missing, correction is skipped and only the fast path runs.
+
+```env
+DEEPSEEK_API_KEY=sk-...
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-chat
+```
+
+Corrections with `confidence < 0.85` are dropped on the backend.

@@ -8,6 +8,7 @@ const btnStop = document.getElementById("btn-stop");
 
 let socket = null;
 let sentenceCount = 0;
+let correctionCount = 0;
 
 const STATUS_LABELS = {
   ready: "就绪",
@@ -44,10 +45,12 @@ function appendSubtitle(payload) {
 
   const item = document.createElement("article");
   item.className = "subtitle-item";
+  item.dataset.id = payload.id;
+  item.dataset.version = String(payload.version || 1);
   item.innerHTML = `
     <div class="subtitle-meta">
       <span>${payload.id}</span>
-      <span>${payload.confidence || "fast"}</span>
+      <span class="subtitle-tag">${payload.confidence || "fast"}</span>
     </div>
     <div class="subtitle-source">EN ${escapeHtml(payload.source || "")}</div>
     <div class="subtitle-translation">ZH ${escapeHtml(payload.translation || "")}</div>
@@ -56,9 +59,33 @@ function appendSubtitle(payload) {
   subtitleList.scrollTop = subtitleList.scrollHeight;
 }
 
+function applyCorrection(payload) {
+  const item = subtitleList.querySelector(`[data-id="${payload.target_id}"]`);
+  if (!item) {
+    return;
+  }
+  if (String(item.dataset.version) !== String(payload.base_version)) {
+    return;
+  }
+
+  const translationEl = item.querySelector(".subtitle-translation");
+  const tagEl = item.querySelector(".subtitle-tag");
+  if (!translationEl) {
+    return;
+  }
+
+  translationEl.innerHTML = `ZH <span class="translation-old">${escapeHtml(payload.old_translation || "")}</span> <span class="translation-new">${escapeHtml(payload.new_translation || "")}</span>`;
+  item.dataset.version = String(payload.new_version);
+  item.classList.add("subtitle-corrected");
+  if (tagEl) {
+    tagEl.textContent = "corrected";
+  }
+}
+
 function updateMetrics(payload) {
   sentenceCount = payload.sentence_count ?? sentenceCount;
-  metricsBar.textContent = `已翻译: ${sentenceCount} 句`;
+  correctionCount = payload.correction_count ?? correctionCount;
+  metricsBar.textContent = `已翻译: ${sentenceCount} 句 · 已修正: ${correctionCount} 处`;
 }
 
 function escapeHtml(text) {
@@ -86,6 +113,10 @@ function connect() {
     }
     if (payload.type === "subtitle") {
       appendSubtitle(payload);
+      return;
+    }
+    if (payload.type === "correction") {
+      applyCorrection(payload);
       return;
     }
     if (payload.type === "metrics") {

@@ -6,8 +6,12 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
 from backend.audio.capture import AudioCaptureError, LoopbackCapture
-from backend.config import ConfigError, load_ast_config
+from backend.bus.subtitle_bus import SubtitleBus
+from backend.config import ConfigError, load_ast_config, load_deepseek_config
+from backend.controller.flow_controller import FlowController
 from backend.controller.subtitle_mapper import SubtitleMapper
+from backend.correction.engine import CorrectionEngine
+from backend.state.session_state import SessionPhase, SessionState
 from backend.translator.ast_client import ASTClient
 
 logger = logging.getLogger(__name__)
@@ -41,10 +45,46 @@ class ConnectionManager:
 class TranslationSession:
     def __init__(self, manager: ConnectionManager) -> None:
         self.manager = manager
-        self.state = "ready"
+        self.state_label = "ready"
         self._task: asyncio.Task | None = None
         self._capture: LoopbackCapture | None = None
-        self._mapper = SubtitleMapper()
+        self._session_state: SessionState | None = None
+        self._mapper: SubtitleMapper | None = None
+        self._flow: FlowController | None = None
+
+    def _build_pipeline(self) -> FlowController:
+        session_state = SessionState(phase=SessionPhase.RUNNING)
+        bus = SubtitleBus()
+        correction_engine = CorrectionEngine(load_deepseek_config())
+        flow = FlowController(session_state, bus, correction_engine)
+
+        bus.subscribe("commit_display", self._on_commit_display)
+        bus.subscribe("correction", self._on_correction)
+
+        self._session_state = session_state
+        return flow
+
+    async def _on_commit_display(self, payload: dict) -> None:
+        await self.manager.broadcast(payload)
+        await self._broadcast_metrics()
+
+    async def _on_correction(self, payload: dict) -> None:
+        await self.manager.broadcast(payload)
+        await self._broadcast_metrics()
+
+    async def _broadcast_metrics(self) -> None:
+        if self._session_state is None:
+            return
+        await self.manager.broadcast(
+            {
+                "type": "metrics",
+                "sentence_count": self._session_state.sentence_count,
+                "correction_count": self._session_state.correction_count,
+                "latency_p50": 0,
+                "latency_p99": 0,
+                "cost_estimate": 0,
+            }
+        )
 
     async def handle_command(self, action: str) -> None:
         if action == "start":
@@ -56,8 +96,9 @@ class TranslationSession:
         if self._task and not self._task.done():
             return
 
-        self.state = "speaking"
+        self.state_label = "speaking"
         self._mapper = SubtitleMapper()
+        self._flow = self._build_pipeline()
         await self.manager.broadcast({"type": "status", "state": "speaking"})
         self._task = asyncio.create_task(self._run_pipeline())
 
@@ -72,35 +113,34 @@ class TranslationSession:
             finally:
                 self._task = None
 
-        self.state = "ready"
+        self.state_label = "ready"
+        self._session_state = None
+        self._mapper = None
+        self._flow = None
         await self.manager.broadcast({"type": "status", "state": "ready"})
 
     async def _run_pipeline(self) -> None:
+        flow = self._flow
+        if flow is None:
+            return
         try:
             config = load_ast_config()
         except ConfigError as exc:
             await self.manager.broadcast({"type": "status", "state": "error", "message": str(exc)})
-            self.state = "ready"
+            self.state_label = "ready"
             return
 
         client = ASTClient(config)
+        mapper = self._mapper
+        assert mapper is not None
+
         try:
             async with LoopbackCapture() as capture:
                 self._capture = capture
                 async for event in client.translate_stream(capture.chunks()):
-                    subtitle = self._mapper.map_event(event)
+                    subtitle = mapper.map_event(event)
                     if subtitle is not None:
-                        await self.manager.broadcast(subtitle)
-                        await self.manager.broadcast(
-                            {
-                                "type": "metrics",
-                                "sentence_count": self._mapper.sentence_count,
-                                "correction_count": 0,
-                                "latency_p50": 0,
-                                "latency_p99": 0,
-                                "cost_estimate": 0,
-                            }
-                        )
+                        await flow.on_new_sentence(subtitle)
         except AudioCaptureError as exc:
             await self.manager.broadcast({"type": "status", "state": "error", "message": str(exc)})
         except Exception as exc:
@@ -108,8 +148,8 @@ class TranslationSession:
             await self.manager.broadcast({"type": "status", "state": "error", "message": str(exc)})
         finally:
             self._capture = None
-            if self.state == "speaking":
-                self.state = "finished"
+            if self.state_label == "speaking":
+                self.state_label = "finished"
                 await self.manager.broadcast({"type": "status", "state": "finished"})
 
 
@@ -121,7 +161,7 @@ def create_app() -> FastAPI:
     @app.websocket("/stream")
     async def stream(websocket: WebSocket) -> None:
         await manager.connect(websocket)
-        await websocket.send_json({"type": "status", "state": session.state})
+        await websocket.send_json({"type": "status", "state": session.state_label})
         try:
             while True:
                 payload = await websocket.receive_json()

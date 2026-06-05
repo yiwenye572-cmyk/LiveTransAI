@@ -6,3 +6,4 @@ python-dotenv
 sounddevice
 soundcard
 numpy
+httpx
