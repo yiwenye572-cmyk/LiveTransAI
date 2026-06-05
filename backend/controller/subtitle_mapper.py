@@ -36,13 +36,15 @@ class SubtitleMapper:
 
         if event.event == Type.TranslationSubtitleEnd:
             self.sentence_count += 1
+            source_text = self._sources.pop(sequence, "")
+            translation_text = event.text or self._translations.pop(sequence, "")
             return {
                 "type": "subtitle",
                 "id": f"s_{sequence:03d}",
                 "version": 1,
                 "speaker": "speaker",
-                "source": event.text or self._sources.get(sequence, ""),
-                "translation": event.text or self._translations.get(sequence, ""),
+                "source": source_text,
+                "translation": translation_text,
                 "confidence": "fast",
             }
 
