@@ -4,11 +4,28 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>LiveTransAI</title>
+    <link rel="stylesheet" href="/style.css" />
   </head>
   <body>
-    <main>
-      <h1>LiveTransAI</h1>
-      <p>Frontend placeholder. The WebSocket subtitle UI will be implemented after the AST smoke test passes.</p>
-    </main>
+    <div class="app">
+      <header class="header">
+        <div>
+          <h1>LiveTransAI</h1>
+          <p class="subtitle">AI 同声传译助手</p>
+        </div>
+        <div id="status-badge" class="status-badge status-ready">就绪</div>
+      </header>
+
+      <section id="subtitle-list" class="subtitle-list"></section>
+
+      <footer class="footer">
+        <div id="metrics-bar" class="metrics-bar">已翻译: 0 句</div>
+        <div class="controls">
+          <button id="btn-start" type="button">开始翻译</button>
+          <button id="btn-stop" type="button" disabled>停止</button>
+        </div>
+      </footer>
+    </div>
+    <script src="/app.js"></script>
   </body>
 </html>

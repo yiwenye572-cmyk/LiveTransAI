@@ -71,3 +71,19 @@ Override the capture device if needed:
 ```bash
 python -m backend.smoke_realtime_ast --device-index -100 --seconds 10
 ```
+
+## Web UI
+
+Start the backend server:
+
+```bash
+python -m backend.main
+```
+
+Open the browser:
+
+```text
+http://127.0.0.1:8765
+```
+
+Click **开始翻译**, then play English audio on your computer. Subtitles should appear in the page in real time.
