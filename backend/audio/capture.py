@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import sounddevice as sd
+import soundcard as sc
 
 
 class AudioCaptureError(RuntimeError):
@@ -32,15 +34,37 @@ class AudioDevice:
     max_output_channels: int
     default_samplerate: float
     kind: str
+    id: str = ""
+
+
+@dataclass(frozen=True)
+class WavStats:
+    frames: int
+    sample_rate: int
+    channels: int
+    rms: float
+    peak: int
 
 
 def list_audio_devices() -> list[AudioDevice]:
     devices = sd.query_devices()
-    return [_device_from_raw(index, device, "device") for index, device in enumerate(devices)]
+    sounddevice_devices = [_device_from_raw(index, device, "device") for index, device in enumerate(devices)]
+    return _soundcard_loopback_devices() + sounddevice_devices
+
+
+def get_audio_device(index: int) -> AudioDevice:
+    for device in list_audio_devices():
+        if device.index == index:
+            return device
+    raise AudioCaptureError(f"Audio device index not found: {index}")
 
 
 def find_loopback_device() -> AudioDevice:
     devices = list_audio_devices()
+
+    soundcard_loopbacks = [device for device in devices if device.kind == "soundcard_loopback"]
+    if soundcard_loopbacks:
+        return soundcard_loopbacks[0]
 
     named_loopback = [
         device
@@ -87,6 +111,9 @@ def record_wav(
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
 
+    if capture_device.kind == "soundcard_loopback":
+        return _record_soundcard_wav(output, duration_seconds, capture_config, capture_device)
+
     chunks: list[bytes] = []
     statuses: list[str] = []
 
@@ -121,6 +148,22 @@ def record_wav(
     return output
 
 
+def wav_stats(path: Path | str) -> WavStats:
+    with wave.open(str(path), "rb") as wav_file:
+        frames = wav_file.getnframes()
+        sample_rate = wav_file.getframerate()
+        channels = wav_file.getnchannels()
+        raw = wav_file.readframes(frames)
+
+    samples = np.frombuffer(raw, dtype="<i2")
+    if samples.size == 0:
+        return WavStats(frames=frames, sample_rate=sample_rate, channels=channels, rms=0.0, peak=0)
+
+    rms = float(np.sqrt(np.mean(samples.astype("float64") ** 2)))
+    peak = int(np.max(np.abs(samples)))
+    return WavStats(frames=frames, sample_rate=sample_rate, channels=channels, rms=rms, peak=peak)
+
+
 def _device_from_raw(index: int, raw: dict[str, Any], kind: str) -> AudioDevice:
     hostapi_index = int(raw.get("hostapi", -1))
     return AudioDevice(
@@ -132,6 +175,74 @@ def _device_from_raw(index: int, raw: dict[str, Any], kind: str) -> AudioDevice:
         default_samplerate=float(raw.get("default_samplerate", 0)),
         kind=kind,
     )
+
+
+def _soundcard_loopback_devices() -> list[AudioDevice]:
+    try:
+        default_speaker = sc.default_speaker()
+        microphones = sc.all_microphones(include_loopback=True)
+    except Exception:
+        return []
+
+    loopbacks = [mic for mic in microphones if getattr(mic, "isloopback", False)]
+    if not loopbacks:
+        return []
+
+    ordered = sorted(loopbacks, key=lambda mic: 0 if mic.id == default_speaker.id else 1)
+    return [
+        AudioDevice(
+            index=-100 - offset,
+            name=mic.name,
+            hostapi="soundcard",
+            max_input_channels=2,
+            max_output_channels=0,
+            default_samplerate=48000,
+            kind="soundcard_loopback",
+            id=mic.id,
+        )
+        for offset, mic in enumerate(ordered)
+    ]
+
+
+def _record_soundcard_wav(
+    output: Path,
+    duration_seconds: float,
+    config: AudioCaptureConfig,
+    device: AudioDevice,
+) -> Path:
+    microphone = _soundcard_microphone_for(device)
+    frames = int(config.sample_rate * duration_seconds)
+
+    try:
+        with microphone.recorder(samplerate=config.sample_rate, channels=config.channels) as recorder:
+            samples = recorder.record(numframes=frames)
+    except Exception as exc:
+        raise AudioCaptureError(f"Failed to record from {device.name}: {exc}") from exc
+
+    pcm = _float_samples_to_pcm16(samples)
+    with wave.open(str(output), "wb") as wav_file:
+        wav_file.setnchannels(config.channels)
+        wav_file.setsampwidth(config.sample_width_bytes)
+        wav_file.setframerate(config.sample_rate)
+        wav_file.writeframes(pcm)
+
+    return output
+
+
+def _soundcard_microphone_for(device: AudioDevice):
+    microphones = sc.all_microphones(include_loopback=True)
+    for microphone in microphones:
+        if microphone.id == device.id:
+            return microphone
+    raise AudioCaptureError(f"Soundcard loopback device disappeared: {device.name}")
+
+
+def _float_samples_to_pcm16(samples: np.ndarray) -> bytes:
+    array = np.asarray(samples)
+    if array.ndim == 1:
+        array = array[:, None]
+    clipped = np.clip(array, -1.0, 1.0)
+    return (clipped * 32767).astype("<i2").tobytes()
 
 
 def _hostapi_name(hostapi_index: int) -> str:
