@@ -108,8 +108,9 @@ class TranslationSession:
             await self.manager.broadcast({"type": "status", "state": "error", "message": str(exc)})
         finally:
             self._capture = None
-            self.state = "finished"
-            await self.manager.broadcast({"type": "status", "state": "finished"})
+            if self.state == "speaking":
+                self.state = "finished"
+                await self.manager.broadcast({"type": "status", "state": "finished"})
 
 
 def create_app() -> FastAPI:
