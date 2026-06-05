@@ -1,5 +1,7 @@
 # Development Notes
 
+AST 集成参数、Event 编号、Protobuf/JSON 协议速查见 [`docs/ast-api-cheatsheet.md`](ast-api-cheatsheet.md)。
+
 ## AST Smoke Test
 
 1. Create a virtual environment and install dependencies:
