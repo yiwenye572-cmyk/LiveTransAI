@@ -9,5 +9,3 @@ type可选：feat/fix/refactor/docs/test/chore
 【测试方式】：功能验证步骤
 无内容统一填写：无
 
-### 约束
-1. 一PR一事，仅改动单个功能，大需求拆分成多个小PR
