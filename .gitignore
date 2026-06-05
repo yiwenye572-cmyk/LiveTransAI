@@ -19,6 +19,7 @@ __pycache__/
 
 # Logs
 *.log
+tmp/
 
 # IDE and OS files
 .vscode/
