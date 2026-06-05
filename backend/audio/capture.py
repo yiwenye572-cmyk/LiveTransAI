@@ -166,11 +166,13 @@ class LoopbackCapture:
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
         self._error: Exception | None = None
+        self._microphone = None
 
     async def __aenter__(self) -> "LoopbackCapture":
         if self.device.kind != "soundcard_loopback":
             raise AudioCaptureError("Realtime capture currently requires a soundcard loopback device.")
 
+        self._microphone = _soundcard_microphone_for(self.device)
         self._loop = asyncio.get_running_loop()
         self._queue = asyncio.Queue(maxsize=64)
         self._thread = threading.Thread(target=self._capture_loop, daemon=True)
@@ -200,12 +202,13 @@ class LoopbackCapture:
     def _capture_loop(self) -> None:
         assert self._loop is not None
         assert self._queue is not None
+        assert self._microphone is not None
 
-        microphone = _soundcard_microphone_for(self.device)
+        _initialize_com()
         blocksize = self.config.blocksize
 
         try:
-            with microphone.recorder(
+            with self._microphone.recorder(
                 samplerate=self.config.sample_rate,
                 channels=self.config.channels,
             ) as recorder:
@@ -217,7 +220,22 @@ class LoopbackCapture:
         except Exception as exc:
             self._error = exc
         finally:
+            _uninitialize_com()
             asyncio.run_coroutine_threadsafe(self._queue.put(None), self._loop).result(timeout=5)
+
+
+def _initialize_com() -> None:
+    import ctypes
+
+    result = ctypes.windll.ole32.CoInitializeEx(None, 0)
+    if result not in (0, 1):  # S_OK or S_FALSE
+        raise AudioCaptureError(f"Failed to initialize COM: {result}")
+
+
+def _uninitialize_com() -> None:
+    import ctypes
+
+    ctypes.windll.ole32.CoUninitialize()
 
 
 def wav_stats(path: Path | str) -> WavStats:
