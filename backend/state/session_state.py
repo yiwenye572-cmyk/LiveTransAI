@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from enum import Enum
 
+from backend.summary.running_summary import RunningSummary
+
 
 class SessionPhase(Enum):
     RUNNING = "running"
@@ -14,3 +16,4 @@ class SessionState:
     sentence_count: int = 0
     correction_count: int = 0
     displayed_sentences: list[dict] = field(default_factory=list)
+    running_summary: RunningSummary = field(default_factory=RunningSummary)

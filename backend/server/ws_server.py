@@ -12,6 +12,7 @@ from backend.controller.flow_controller import FlowController
 from backend.controller.subtitle_mapper import SubtitleMapper
 from backend.correction.engine import CorrectionEngine
 from backend.state.session_state import SessionPhase, SessionState
+from backend.summary.updater import SummaryUpdater
 from backend.translator.ast_client import ASTClient
 
 logger = logging.getLogger(__name__)
@@ -56,7 +57,8 @@ class TranslationSession:
         session_state = SessionState(phase=SessionPhase.RUNNING)
         bus = SubtitleBus()
         correction_engine = CorrectionEngine(load_deepseek_config())
-        flow = FlowController(session_state, bus, correction_engine)
+        summary_updater = SummaryUpdater(load_deepseek_config())
+        flow = FlowController(session_state, bus, correction_engine, summary_updater)
 
         bus.subscribe("commit_display", self._on_commit_display)
         bus.subscribe("correction", self._on_correction)

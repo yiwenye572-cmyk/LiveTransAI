@@ -2,16 +2,18 @@ import json
 import logging
 import re
 
-import httpx
-
 from backend.config import DeepSeekConfig
+from backend.llm.deepseek_client import chat_completion
+from backend.summary.running_summary import RunningSummary
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """你是同声传译的校对专家。你会收到最近若干句英文原文及对应的中文快速翻译。
+SYSTEM_PROMPT = """你是同声传译的校对专家。你会收到：
+1. 【会话摘要】：本场演讲的主题、术语和要点
+2. 【待校对段落】：最近若干句英文原文及中文快速翻译
 
-请基于上下文重新审视快速翻译。只修正确实有问题的句子，不要润色已经正确的翻译。
-修正应尽可能小，不要整句重写。
+请结合会话摘要理解指代、术语和上下文，但只修正【待校对段落】中的句子。
+只修正确实有问题的句子，不要润色已经正确的翻译。修正应尽可能小，不要整句重写。
 
 以 JSON 输出，格式如下：
 {
@@ -43,53 +45,39 @@ class CorrectionEngine:
     def enabled(self) -> bool:
         return self.config is not None
 
-    async def run(self, window: list[dict]) -> list[dict]:
+    async def run(self, window: list[dict], summary: RunningSummary) -> list[dict]:
         if not self.config or not window:
             return []
 
-        user_content = self._format_window(window)
-        raw = await self._call_deepseek(user_content)
-        if not raw:
+        user_content = self._format_prompt(window, summary)
+        try:
+            raw = await chat_completion(
+                self.config,
+                system=SYSTEM_PROMPT,
+                user=user_content,
+                temperature=0.2,
+            )
+        except Exception:
+            logger.exception("DeepSeek correction API call failed")
             return []
 
         return self._parse_corrections(raw, window)
 
-    def _format_window(self, window: list[dict]) -> str:
-        lines = []
+    def _format_prompt(self, window: list[dict], summary: RunningSummary) -> str:
+        focus_lines = []
         for item in window:
-            lines.append(
+            focus_lines.append(
                 f'{item["id"]} (v{item.get("version", 1)})\n'
                 f'EN: {item.get("source", "")}\n'
                 f'ZH: {item.get("translation", "")}'
             )
-        return "\n\n".join(lines)
 
-    async def _call_deepseek(self, user_content: str) -> str:
-        assert self.config is not None
-        url = f"{self.config.base_url.rstrip('/')}/chat/completions"
-        payload = {
-            "model": self.config.model,
-            "messages": [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_content},
-            ],
-            "temperature": 0.2,
-            "response_format": {"type": "json_object"},
-        }
-        headers = {
-            "Authorization": f"Bearer {self.config.api_key}",
-            "Content-Type": "application/json",
-        }
-
-        try:
-            async with httpx.AsyncClient(timeout=self.config.timeout_sec) as client:
-                response = await client.post(url, headers=headers, json=payload)
-                response.raise_for_status()
-                data = response.json()
-                return data["choices"][0]["message"]["content"]
-        except Exception:
-            logger.exception("DeepSeek API call failed")
-            return ""
+        return (
+            "【会话摘要】\n"
+            f"{summary.to_prompt_block()}\n\n"
+            "【待校对段落 - 仅可修改下列句子】\n"
+            f"{chr(10).join(focus_lines)}"
+        )
 
     def _parse_corrections(self, raw: str, window: list[dict]) -> list[dict]:
         text = raw.strip()

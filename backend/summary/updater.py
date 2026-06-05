@@ -1,0 +1,95 @@
+import json
+import logging
+import re
+
+from backend.config import DeepSeekConfig
+from backend.llm.deepseek_client import chat_completion
+from backend.state.session_state import SessionState
+from backend.summary.running_summary import RunningSummary
+
+logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT = """你是同声传译会话的记录员。根据【旧摘要】和【新增句子】，输出更新后的会话摘要 JSON。
+
+要求：
+1. 保留仍相关的 topic、术语、要点，合并重复信息，删除过时细节
+2. bullet_points 最多 8 条，每条不超过 40 字
+3. term_map 只保留本场已出现术语，格式为 {"英文或中文源词": "推荐中文译法"}
+4. 不要编造未出现的信息
+
+输出 JSON 格式：
+{
+  "topic": "演讲主题",
+  "term_map": {"federated learning": "联邦学习"},
+  "bullet_points": ["要点1", "要点2"]
+}
+
+只输出 JSON，不要 markdown。"""
+
+
+class SummaryUpdater:
+    """Incremental LLM summary over the current translation session."""
+
+    def __init__(self, config: DeepSeekConfig | None) -> None:
+        self.config = config
+
+    @property
+    def enabled(self) -> bool:
+        return self.config is not None
+
+    async def update(self, state: SessionState) -> bool:
+        if not self.config:
+            return False
+
+        start_index = state.running_summary.last_summarized_at
+        new_sentences = state.displayed_sentences[start_index:]
+        if not new_sentences:
+            return False
+
+        user_content = self._format_input(state.running_summary, new_sentences)
+        try:
+            raw = await chat_completion(
+                self.config,
+                system=SYSTEM_PROMPT,
+                user=user_content,
+                temperature=0.1,
+            )
+        except Exception:
+            logger.exception("Summary update API call failed")
+            return False
+
+        payload = self._parse_json(raw)
+        if payload is None:
+            return False
+
+        state.running_summary.apply_payload(payload, sentence_count=state.sentence_count)
+        logger.info(
+            "Summary updated at sentence %s with %s new sentences",
+            state.sentence_count,
+            len(new_sentences),
+        )
+        return True
+
+    def _format_input(self, summary: RunningSummary, new_sentences: list[dict]) -> str:
+        old_summary = {
+            "topic": summary.topic,
+            "term_map": summary.term_map,
+            "bullet_points": summary.bullet_points,
+        }
+        lines = ["【旧摘要】", json.dumps(old_summary, ensure_ascii=False), "", "【新增句子】"]
+        for item in new_sentences:
+            lines.append(
+                f'{item["id"]}\nEN: {item.get("source", "")}\nZH: {item.get("translation", "")}'
+            )
+        return "\n\n".join(lines)
+
+    def _parse_json(self, raw: str) -> dict | None:
+        text = raw.strip()
+        if text.startswith("```"):
+            text = re.sub(r"^```(?:json)?\s*", "", text)
+            text = re.sub(r"\s*```$", "", text)
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            logger.warning("Failed to parse summary JSON: %s", raw[:200])
+            return None
