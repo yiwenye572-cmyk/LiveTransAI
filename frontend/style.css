@@ -81,6 +81,65 @@ h1 {
   gap: 16px;
 }
 
+.summary-panel {
+  margin: 12px 20px 0;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #171a21;
+  border: 1px solid #2a2f3a;
+}
+
+.summary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.summary-header h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #bdc1c6;
+}
+
+.summary-meta {
+  font-size: 0.75rem;
+  color: #9aa0a6;
+}
+
+.summary-topic {
+  font-size: 0.95rem;
+  color: #8ab4f8;
+  margin-bottom: 8px;
+}
+
+.summary-terms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.summary-term {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #2a2f3a;
+  color: #e8eaed;
+}
+
+.summary-bullets {
+  margin: 0;
+  padding-left: 18px;
+  color: #bdc1c6;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.summary-bullets:empty {
+  display: none;
+}
+
 .subtitle-item {
   padding: 14px 16px;
   border-radius: 12px;

@@ -38,3 +38,12 @@ class RunningSummary:
             }
 
         self.last_summarized_at = sentence_count
+
+    def to_ws_payload(self, *, sentence_count: int) -> dict:
+        return {
+            "type": "summary",
+            "topic": self.topic,
+            "term_map": dict(self.term_map),
+            "bullet_points": list(self.bullet_points),
+            "updated_at_sentence": sentence_count,
+        }

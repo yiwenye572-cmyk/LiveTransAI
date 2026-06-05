@@ -62,6 +62,7 @@ class TranslationSession:
 
         bus.subscribe("commit_display", self._on_commit_display)
         bus.subscribe("correction", self._on_correction)
+        bus.subscribe("summary_update", self._on_summary_update)
 
         self._session_state = session_state
         return flow
@@ -73,6 +74,9 @@ class TranslationSession:
     async def _on_correction(self, payload: dict) -> None:
         await self.manager.broadcast(payload)
         await self._broadcast_metrics()
+
+    async def _on_summary_update(self, payload: dict) -> None:
+        await self.manager.broadcast(payload)
 
     async def _broadcast_metrics(self) -> None:
         if self._session_state is None:
@@ -102,6 +106,15 @@ class TranslationSession:
         self._mapper = SubtitleMapper()
         self._flow = self._build_pipeline()
         await self.manager.broadcast({"type": "status", "state": "speaking"})
+        await self.manager.broadcast(
+            {
+                "type": "summary",
+                "topic": "",
+                "term_map": {},
+                "bullet_points": [],
+                "updated_at_sentence": 0,
+            }
+        )
         self._task = asyncio.create_task(self._run_pipeline())
 
     async def stop(self) -> None:
