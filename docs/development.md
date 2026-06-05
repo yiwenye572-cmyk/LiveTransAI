@@ -92,12 +92,15 @@ Click **开始翻译**, then play English audio on your computer. Subtitles shou
 
 ## Async Correction (DeepSeek)
 
-The Web UI uses a minimal dual-channel pipeline:
+The Web UI uses a dual-channel pipeline:
 
 - **Fast path**: Doubao AST subtitles appear immediately.
-- **Slow path**: After at least 3 sentences and 8 seconds between runs, the backend calls DeepSeek official API to review recent translations and may push `correction` events to the browser.
+- **Summary path**: Every 5 new sentences, an async DeepSeek call incrementally updates a running session summary (`topic`, `term_map`, `bullet_points`).
+- **Correction path**: After at least 3 sentences and 8 seconds between runs, another async DeepSeek call reviews recent translations using the latest available summary snapshot.
 
-If `DEEPSEEK_API_KEY` is missing, correction is skipped and only the fast path runs.
+Summary and correction run in parallel (`asyncio.create_task`) and do not block the fast path.
+
+If `DEEPSEEK_API_KEY` is missing, both slow paths are skipped.
 
 ```env
 DEEPSEEK_API_KEY=sk-...
