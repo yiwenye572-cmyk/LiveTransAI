@@ -1,5 +1,8 @@
+import asyncio
 import inspect
+import threading
 import wave
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -146,6 +149,75 @@ def record_wav(
         print("Audio callback status:", "; ".join(statuses[-3:]))
 
     return output
+
+
+class LoopbackCapture:
+    """Stream PCM chunks from a soundcard loopback device."""
+
+    def __init__(
+        self,
+        config: AudioCaptureConfig | None = None,
+        device: AudioDevice | None = None,
+    ):
+        self.config = config or AudioCaptureConfig()
+        self.device = device or find_loopback_device()
+        self._queue: asyncio.Queue[bytes | None] | None = None
+        self._loop: asyncio.AbstractEventLoop | None = None
+        self._thread: threading.Thread | None = None
+        self._stop = threading.Event()
+        self._error: Exception | None = None
+
+    async def __aenter__(self) -> "LoopbackCapture":
+        if self.device.kind != "soundcard_loopback":
+            raise AudioCaptureError("Realtime capture currently requires a soundcard loopback device.")
+
+        self._loop = asyncio.get_running_loop()
+        self._queue = asyncio.Queue(maxsize=64)
+        self._thread = threading.Thread(target=self._capture_loop, daemon=True)
+        self._thread.start()
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        self.stop()
+        if self._thread:
+            self._thread.join(timeout=3)
+        if self._error is not None:
+            raise AudioCaptureError(f"Loopback capture failed: {self._error}") from self._error
+
+    def stop(self) -> None:
+        self._stop.set()
+
+    async def chunks(self) -> AsyncIterator[bytes]:
+        if self._queue is None:
+            raise AudioCaptureError("LoopbackCapture is not started.")
+
+        while True:
+            chunk = await self._queue.get()
+            if chunk is None:
+                break
+            yield chunk
+
+    def _capture_loop(self) -> None:
+        assert self._loop is not None
+        assert self._queue is not None
+
+        microphone = _soundcard_microphone_for(self.device)
+        blocksize = self.config.blocksize
+
+        try:
+            with microphone.recorder(
+                samplerate=self.config.sample_rate,
+                channels=self.config.channels,
+            ) as recorder:
+                while not self._stop.is_set():
+                    samples = recorder.record(numframes=blocksize)
+                    pcm = _float_samples_to_pcm16(samples)
+                    future = asyncio.run_coroutine_threadsafe(self._queue.put(pcm), self._loop)
+                    future.result(timeout=5)
+        except Exception as exc:
+            self._error = exc
+        finally:
+            asyncio.run_coroutine_threadsafe(self._queue.put(None), self._loop).result(timeout=5)
 
 
 def wav_stats(path: Path | str) -> WavStats:

@@ -22,19 +22,23 @@ def configure_stdout() -> None:
         sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 
+def print_ast_event(event) -> None:
+    if event.event_name in TEXT_EVENTS:
+        print(
+            f"[{event.event_name}] seq={event.sequence} "
+            f"time={event.start_time}-{event.end_time} text={event.text}"
+        )
+    else:
+        detail = f" message={event.message}" if event.message else ""
+        print(f"[{event.event_name}] seq={event.sequence}{detail}")
+
+
 async def run(audio_path: Path) -> None:
     config = load_ast_config()
     client = ASTClient(config)
 
     async for event in client.translate_file(audio_path):
-        if event.event_name in TEXT_EVENTS:
-            print(
-                f"[{event.event_name}] seq={event.sequence} "
-                f"time={event.start_time}-{event.end_time} text={event.text}"
-            )
-        else:
-            detail = f" message={event.message}" if event.message else ""
-            print(f"[{event.event_name}] seq={event.sequence}{detail}")
+        print_ast_event(event)
 
 
 def parse_args() -> argparse.Namespace:

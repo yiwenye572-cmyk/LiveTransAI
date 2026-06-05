@@ -63,6 +63,31 @@ class ASTClient:
             finally:
                 await sender
 
+    async def translate_stream(self, audio_chunks: AsyncIterator[bytes]) -> AsyncIterator[ASTResponseEvent]:
+        """Send live PCM chunks to AST and yield response events."""
+        session_id = str(uuid.uuid4())
+        async with await self._connect() as ws:
+            await self._send_start_session(ws, session_id)
+            started = await self._receive(ws)
+            yield started
+            if started.event != Type.SessionStarted:
+                raise RuntimeError(f"AST session did not start: {started.event_name} {started.message}")
+
+            sender = asyncio.create_task(self._send_audio_stream(ws, session_id, audio_chunks))
+            try:
+                while True:
+                    event = await self._receive(ws)
+                    yield event
+                    if event.event in (Type.SessionFinished, Type.SessionFailed, Type.SessionCanceled):
+                        break
+            finally:
+                if not sender.done():
+                    sender.cancel()
+                    try:
+                        await sender
+                    except asyncio.CancelledError:
+                        pass
+
     async def _connect(self):
         headers = {
             "X-Api-Key": self.config.api_key,
@@ -100,6 +125,20 @@ class ASTClient:
                 await asyncio.sleep(self.config.chunk_ms / 1000)
 
         await self._send_request(ws, self._base_request(session_id, Type.FinishSession))
+
+    async def _send_audio_stream(
+        self,
+        ws,
+        session_id: str,
+        audio_chunks: AsyncIterator[bytes],
+    ) -> None:
+        try:
+            async for chunk in audio_chunks:
+                request = self._base_request(session_id, Type.TaskRequest)
+                request.source_audio.binary_data = chunk
+                await self._send_request(ws, request)
+        finally:
+            await self._send_request(ws, self._base_request(session_id, Type.FinishSession))
 
     def _base_request(self, session_id: str, event: int) -> TranslateRequest:
         request = TranslateRequest()
