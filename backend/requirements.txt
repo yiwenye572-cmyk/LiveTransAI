@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+websockets
+protobuf
+python-dotenv
+sounddevice
+numpy
