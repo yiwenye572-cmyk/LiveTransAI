@@ -6,6 +6,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from backend.audio.capture import AudioCaptureError, LoopbackCapture
 from backend.bus.subtitle_bus import SubtitleBus
@@ -13,6 +14,7 @@ from backend.config import ConfigError, load_ast_config, load_deepseek_config
 from backend.controller.flow_controller import FlowController
 from backend.controller.subtitle_mapper import SubtitleMapper
 from backend.correction.engine import CorrectionEngine
+from backend.glossary import GlossaryBundle, GlossaryError, GlossaryGenerator
 from backend.persist.session_reader import SessionReader
 from backend.persist.session_writer import SessionWriter
 from backend.state.session_state import SessionPhase, SessionState
@@ -22,6 +24,20 @@ from backend.translator.ast_client import ASTClient
 logger = logging.getLogger(__name__)
 
 FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+
+
+class GlossaryGenerateRequest(BaseModel):
+    scenario: str = Field(min_length=1, max_length=200)
+    instruction: str = Field(min_length=1, max_length=300)
+
+
+def apply_glossary_to_state(state: SessionState, bundle: GlossaryBundle | None) -> None:
+    if bundle is None:
+        return
+    state.context_scenario = bundle.scenario
+    state.context_instruction = bundle.instruction
+    state.tone_hint = bundle.tone_hint
+    state.static_glossary = dict(bundle.glossary_list)
 
 
 class ConnectionManager:
@@ -57,8 +73,9 @@ class TranslationSession:
         self._mapper: SubtitleMapper | None = None
         self._flow: FlowController | None = None
         self._persisted = False
+        self._pending_glossary: GlossaryBundle | None = None
 
-    def _build_pipeline(self) -> FlowController:
+    def _build_pipeline(self, glossary: GlossaryBundle | None = None) -> FlowController:
         session_id = str(uuid.uuid4())
         started_at = time.time()
         session_dir = SessionWriter.ensure_session_dir(session_id, started_at=started_at)
@@ -68,6 +85,7 @@ class TranslationSession:
             started_at=started_at,
             session_dir=session_dir,
         )
+        apply_glossary_to_state(session_state, glossary)
         bus = SubtitleBus()
         correction_engine = CorrectionEngine(load_deepseek_config())
         summary_updater = SummaryUpdater(load_deepseek_config())
@@ -120,20 +138,21 @@ class TranslationSession:
             }
         )
 
-    async def handle_command(self, action: str) -> None:
+    async def handle_command(self, action: str, glossary: dict | None = None) -> None:
         if action == "start":
-            await self.start()
+            await self.start(glossary)
         elif action == "stop":
             await self.stop()
 
-    async def start(self) -> None:
+    async def start(self, glossary: dict | None = None) -> None:
         if self._task and not self._task.done():
             return
 
         self._persisted = False
         self.state_label = "speaking"
         self._mapper = SubtitleMapper()
-        self._flow = self._build_pipeline()
+        bundle = GlossaryBundle.from_client_payload(glossary) or self._pending_glossary
+        self._flow = self._build_pipeline(bundle)
         await self.manager.broadcast({"type": "status", "state": "speaking"})
         await self.manager.broadcast(
             {
@@ -225,6 +244,16 @@ def create_app() -> FastAPI:
     manager = ConnectionManager()
     session = TranslationSession(manager)
 
+    @app.post("/api/glossary/generate")
+    async def generate_glossary(body: GlossaryGenerateRequest) -> dict:
+        generator = GlossaryGenerator(load_deepseek_config())
+        try:
+            bundle = await generator.generate(body.scenario, body.instruction)
+        except GlossaryError as exc:
+            raise HTTPException(status_code=503, detail=str(exc)) from exc
+        session._pending_glossary = bundle
+        return bundle.to_api_dict()
+
     @app.get("/api/sessions")
     async def list_sessions() -> dict:
         return {"sessions": SessionReader.list_sessions()}
@@ -247,7 +276,8 @@ def create_app() -> FastAPI:
                     continue
                 action = payload.get("action")
                 if action in {"start", "stop"}:
-                    await session.handle_command(action)
+                    glossary = payload.get("glossary") if action == "start" else None
+                    await session.handle_command(action, glossary=glossary)
         except WebSocketDisconnect:
             manager.disconnect(websocket)
             if not manager.connections:

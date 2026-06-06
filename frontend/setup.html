@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>术语表配置 · LiveTransAI</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/setup.css" />
+  </head>
+  <body>
+    <div class="setup-app">
+      <header class="setup-header">
+        <div>
+          <h1>术语表配置</h1>
+          <p class="subtitle">描述业务场景，由 AI 生成英中术语表，再进入同声传译</p>
+        </div>
+        <a class="setup-link" href="/">跳过，直接进入同传</a>
+      </header>
+
+      <main class="setup-main">
+        <section class="setup-form-panel">
+          <label class="setup-label" for="glossary-scenario">业务场景</label>
+          <input
+            id="glossary-scenario"
+            class="setup-input"
+            type="text"
+            maxlength="200"
+            placeholder="例：AI 技术分享会"
+          />
+
+          <label class="setup-label" for="glossary-instruction">一句话说明</label>
+          <input
+            id="glossary-instruction"
+            class="setup-input"
+            type="text"
+            maxlength="300"
+            placeholder="例：工程向分享，术语用大陆常用译法，保持统一"
+          />
+
+          <div class="setup-actions">
+            <button id="btn-generate-glossary" type="button">生成术语表</button>
+            <a id="btn-enter-live" class="setup-enter" href="/">进入同传</a>
+          </div>
+          <p id="setup-status" class="setup-status">填写场景与说明后点击生成（可选，不生成也可同传）</p>
+        </section>
+
+        <section class="setup-preview-panel">
+          <div class="setup-preview-header">
+            <h2>术语预览</h2>
+            <span id="glossary-count" class="setup-meta">0 条</span>
+          </div>
+          <div id="glossary-preview" class="glossary-preview">
+            <div class="empty-state">尚未生成术语表</div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="/glossary.js"></script>
+    <script src="/setup.js"></script>
+  </body>
+</html>

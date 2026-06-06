@@ -28,3 +28,7 @@ class SessionState:
     running_summary: RunningSummary = field(default_factory=RunningSummary)
     formatted_doc: FormattedDocument = field(default_factory=FormattedDocument)
     memory_entries: list[MemoryEntry] = field(default_factory=list)
+    context_scenario: str = ""
+    context_instruction: str = ""
+    tone_hint: str = ""
+    static_glossary: dict[str, str] = field(default_factory=dict)

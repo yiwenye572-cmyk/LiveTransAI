@@ -53,6 +53,46 @@ body {
   background: #3c4043;
 }
 
+.header-link {
+  color: #8ab4f8;
+  text-decoration: none;
+  font-size: 0.875rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #3c4043;
+}
+
+.header-link:hover {
+  background: #2a2f3a;
+}
+
+.glossary-panel {
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #171a21;
+  border: 1px solid #2a2f3a;
+  flex: 0 0 auto;
+}
+
+.glossary-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.glossary-header h2 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #bdc1c6;
+}
+
+.glossary-edit-link {
+  font-size: 0.75rem;
+  color: #8ab4f8;
+  text-decoration: none;
+}
+
 h1 {
   margin: 0;
   font-size: 1.25rem;

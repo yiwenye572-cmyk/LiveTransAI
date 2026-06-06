@@ -9,6 +9,8 @@ const summaryTerms = document.getElementById("summary-terms");
 const summaryBullets = document.getElementById("summary-bullets");
 const formattedMeta = document.getElementById("formatted-meta");
 const formattedContent = document.getElementById("formatted-content");
+const glossaryLoadedMeta = document.getElementById("glossary-loaded-meta");
+const glossaryLoadedTerms = document.getElementById("glossary-loaded-terms");
 const btnStart = document.getElementById("btn-start");
 const btnStop = document.getElementById("btn-stop");
 const btnHistory = document.getElementById("btn-history");
@@ -43,7 +45,29 @@ function sendCommand(action) {
   if (!socket || socket.readyState !== WebSocket.OPEN) {
     return;
   }
-  socket.send(JSON.stringify({ type: "command", action }));
+  const payload = { type: "command", action };
+  if (action === "start") {
+    const stored = loadStoredGlossary();
+    if (stored && stored.term_map && Object.keys(stored.term_map).length > 0) {
+      payload.glossary = stored;
+    }
+  }
+  socket.send(JSON.stringify(payload));
+}
+
+function applyLoadedGlossaryToUi() {
+  const stored = loadStoredGlossary();
+  if (!stored || !stored.term_map || Object.keys(stored.term_map).length === 0) {
+    glossaryLoadedMeta.textContent = "未加载术语表，可在配置页生成";
+    renderTermMap(glossaryLoadedTerms, {});
+    return;
+  }
+  const count = Object.keys(stored.term_map).length;
+  const scenario = (stored.scenario || "").trim();
+  glossaryLoadedMeta.textContent = scenario
+    ? `${scenario} · ${count} 条术语`
+    : `已加载 ${count} 条术语`;
+  renderTermMap(glossaryLoadedTerms, stored.term_map);
 }
 
 function renderEmptySubtitleState() {
@@ -447,4 +471,5 @@ historyOverlay.addEventListener("click", (event) => {
 renderEmptySubtitleState();
 renderEmptyFormattedState();
 resetSummary();
+applyLoadedGlossaryToUi();
 connect();
