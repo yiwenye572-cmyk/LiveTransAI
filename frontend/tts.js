@@ -16,16 +16,50 @@
       this.supported = typeof Audio !== "undefined";
       this.enabled = localStorage.getItem(STORAGE_KEY) !== "0";
       this.available = false;
+      this.backendMode = false;
       this.mimeType = "audio/ogg";
       this.buffers = new Map();
       this.playQueue = [];
       this.playing = false;
       this.currentAudio = null;
       this.currentObjectUrl = null;
+      this.captureControl = null;
+      this.captureSuppressed = false;
+    }
+
+    setCaptureControl(callback) {
+      this.captureControl = typeof callback === "function" ? callback : null;
+    }
+
+    setBackendMode(on) {
+      this.backendMode = Boolean(on);
+      if (this.backendMode) {
+        this.stop();
+        this.captureSuppressed = false;
+      }
+    }
+
+    isBackendMode() {
+      return this.backendMode;
+    }
+
+    updateCaptureSuppress() {
+      if (this.backendMode) {
+        return;
+      }
+      const shouldSuppress = this.enabled && this.available && (this.playing || this.playQueue.length > 0);
+      if (shouldSuppress === this.captureSuppressed) {
+        return;
+      }
+      this.captureSuppressed = shouldSuppress;
+      if (this.captureControl) {
+        this.captureControl(shouldSuppress);
+      }
     }
 
     setConfig(payload) {
       this.available = true;
+      this.setBackendMode(payload.playback === "backend");
       const format = payload.format || "ogg_opus";
       this.mimeType = format === "ogg_opus" ? "audio/ogg" : "audio/ogg";
     }
@@ -52,10 +86,16 @@
     }
 
     onStart(payload) {
+      if (this.backendMode) {
+        return;
+      }
       this.buffers.set(payload.sequence, []);
     }
 
     onAudio(payload) {
+      if (this.backendMode) {
+        return;
+      }
       if (!payload.data) {
         return;
       }
@@ -66,6 +106,9 @@
     }
 
     onEnd(payload) {
+      if (this.backendMode) {
+        return;
+      }
       const chunks = this.buffers.get(payload.sequence) || [];
       this.buffers.delete(payload.sequence);
       if (!this.enabled || !this.available || chunks.length === 0) {
@@ -99,15 +142,18 @@
       this.playQueue = [];
       this.buffers.clear();
       this.playing = false;
+      this.updateCaptureSuppress();
     }
 
     pump() {
-      if (!this.supported || this.playing || this.playQueue.length === 0) {
+      if (this.backendMode || !this.supported || this.playing || this.playQueue.length === 0) {
+        this.updateCaptureSuppress();
         return;
       }
 
       const data = this.playQueue.shift();
       this.playing = true;
+      this.updateCaptureSuppress();
 
       const blob = new Blob([data], { type: this.mimeType });
       const url = URL.createObjectURL(blob);
@@ -122,6 +168,7 @@
         }
         this.currentAudio = null;
         this.playing = false;
+        this.updateCaptureSuppress();
         this.pump();
       };
 

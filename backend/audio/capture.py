@@ -28,6 +28,10 @@ class AudioCaptureConfig:
     def blocksize(self) -> int:
         return int(self.sample_rate * self.chunk_ms / 1000)
 
+    @property
+    def chunk_size_bytes(self) -> int:
+        return self.blocksize * self.sample_width_bytes * self.channels
+
 
 @dataclass(frozen=True)
 class AudioDevice:
@@ -48,6 +52,42 @@ class WavStats:
     channels: int
     rms: float
     peak: int
+
+
+@dataclass(frozen=True)
+class OutputSpeaker:
+    id: str
+    name: str
+    is_default: bool = False
+
+
+def list_output_speakers() -> list[OutputSpeaker]:
+    try:
+        default_speaker = sc.default_speaker()
+        speakers = sc.all_speakers()
+    except Exception:
+        return []
+
+    default_id = default_speaker.id
+    ordered = sorted(speakers, key=lambda speaker: 0 if speaker.id == default_id else 1)
+    return [
+        OutputSpeaker(id=speaker.id, name=speaker.name, is_default=speaker.id == default_id)
+        for speaker in ordered
+    ]
+
+
+def get_speaker_by_id(speaker_id: str):
+    for speaker in list_output_speakers():
+        if speaker.id == speaker_id:
+            microphones = sc.all_speakers()
+            for raw in microphones:
+                if raw.id == speaker_id:
+                    return raw
+    raise AudioCaptureError(f"Output speaker not found: {speaker_id}")
+
+
+def list_loopback_devices() -> list[AudioDevice]:
+    return [device for device in list_audio_devices() if device.kind == "soundcard_loopback"]
 
 
 def list_audio_devices() -> list[AudioDevice]:
@@ -168,6 +208,15 @@ class LoopbackCapture:
         self._stop = threading.Event()
         self._error: Exception | None = None
         self._microphone = None
+        self._suppress_output = threading.Event()
+        self._silence_pcm = b"\x00" * self.config.chunk_size_bytes
+
+    def set_suppress_output(self, suppress: bool) -> None:
+        """Drop loopback signal while translated audio plays on the same speaker."""
+        if suppress:
+            self._suppress_output.set()
+        else:
+            self._suppress_output.clear()
 
     async def __aenter__(self) -> "LoopbackCapture":
         if self.device.kind != "soundcard_loopback":
@@ -215,8 +264,11 @@ class LoopbackCapture:
             ) as recorder:
                 while not self._stop.is_set():
                     samples = recorder.record(numframes=blocksize)
-                    samples = _amplify_quiet_loopback(samples)
-                    pcm = _float_samples_to_pcm16(samples)
+                    if self._suppress_output.is_set():
+                        pcm = self._silence_pcm
+                    else:
+                        samples = _amplify_quiet_loopback(samples)
+                        pcm = _float_samples_to_pcm16(samples)
                     future = asyncio.run_coroutine_threadsafe(self._queue.put(pcm), self._loop)
                     future.result(timeout=5)
         except Exception as exc:

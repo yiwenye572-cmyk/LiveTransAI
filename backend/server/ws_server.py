@@ -8,12 +8,21 @@ from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from backend.audio.capture import AudioCaptureError, LoopbackCapture
+from backend.audio.capture import (
+    AudioCaptureError,
+    AudioDevice,
+    LoopbackCapture,
+    find_loopback_device,
+    get_audio_device,
+    list_loopback_devices,
+    list_output_speakers,
+)
+from backend.audio.tts_playback import TtsPlayback
 from backend.bus.subtitle_bus import SubtitleBus
 from backend.config import ConfigError, load_ast_config, load_deepseek_config
 from backend.controller.flow_controller import FlowController
 from backend.controller.subtitle_mapper import SubtitleMapper
-from backend.controller.tts_mapper import map_tts_event
+from backend.controller.tts_mapper import feed_tts_playback, map_tts_event
 from backend.correction.engine import CorrectionEngine
 from backend.glossary import GlossaryBundle, GlossaryError, GlossaryGenerator
 from backend.persist.session_reader import SessionReader
@@ -31,6 +40,51 @@ FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 class GlossaryGenerateRequest(BaseModel):
     scenario: str = Field(min_length=1, max_length=200)
     instruction: str = Field(min_length=1, max_length=300)
+
+
+AUDIO_DEVICES_HINT = (
+    "请在 Windows 设置 → 系统 → 声音 → 应用音量和设备偏好设置 中，"
+    "将浏览器（网课）输出设为与「监听设备」相同的扬声器。"
+)
+
+
+def build_audio_devices_payload() -> dict:
+    loopbacks = list_loopback_devices()
+    outputs = list_output_speakers()
+    default_loopback = find_loopback_device() if loopbacks else None
+    return {
+        "loopbacks": [
+            {
+                "index": device.index,
+                "name": device.name,
+                "id": device.id,
+                "is_default": default_loopback is not None and device.index == default_loopback.index,
+            }
+            for device in loopbacks
+        ],
+        "outputs": [
+            {"id": speaker.id, "name": speaker.name, "is_default": speaker.is_default}
+            for speaker in outputs
+        ],
+        "hint": AUDIO_DEVICES_HINT,
+    }
+
+
+def resolve_audio_route(audio_config: dict | None) -> tuple[AudioDevice, str, str]:
+    loopback = find_loopback_device()
+    outputs = list_output_speakers()
+    default_output = next((speaker for speaker in outputs if speaker.is_default), outputs[0] if outputs else None)
+
+    loopback_index = audio_config.get("loopback_index") if audio_config else None
+    if loopback_index is not None:
+        loopback = get_audio_device(int(loopback_index))
+
+    tts_output_id = (audio_config or {}).get("tts_output_id") or (default_output.id if default_output else "")
+    if not tts_output_id:
+        raise AudioCaptureError("No output speaker is available for TTS playback.")
+
+    output_name = next((speaker.name for speaker in outputs if speaker.id == tts_output_id), tts_output_id)
+    return loopback, tts_output_id, output_name
 
 
 def apply_glossary_to_state(state: SessionState, bundle: GlossaryBundle | None) -> None:
@@ -72,11 +126,14 @@ class TranslationSession:
         self.state_label = "ready"
         self._task: asyncio.Task | None = None
         self._capture: LoopbackCapture | None = None
+        self._tts_player: TtsPlayback | None = None
         self._session_state: SessionState | None = None
         self._mapper: SubtitleMapper | None = None
         self._flow: FlowController | None = None
         self._persisted = False
         self._pending_glossary: GlossaryBundle | None = None
+        self._audio_config: dict | None = None
+        self._backend_tts = False
 
     def _build_pipeline(self, glossary: GlossaryBundle | None = None) -> FlowController:
         session_id = str(uuid.uuid4())
@@ -186,29 +243,52 @@ class TranslationSession:
             try:
                 ast_config = load_ast_config()
                 if ast_config.mode == "s2s":
-                    await websocket.send_json(
-                        {
-                            "type": "tts_config",
-                            "format": ast_config.target_audio_format,
-                            "rate": ast_config.target_audio_rate,
-                        }
-                    )
+                    await websocket.send_json(self._build_tts_config_payload(ast_config))
             except ConfigError:
                 pass
         if self._session_state is not None and self.state_label in {"speaking", "finished"}:
             await websocket.send_json(self._build_session_sync())
 
-    async def handle_command(self, action: str, glossary: dict | None = None) -> None:
+    def _build_tts_config_payload(self, ast_config) -> dict:
+        return {
+            "type": "tts_config",
+            "format": ast_config.target_audio_format,
+            "rate": ast_config.target_audio_rate,
+            "playback": "backend" if self._backend_tts else "browser",
+        }
+
+    async def handle_command(
+        self,
+        action: str,
+        glossary: dict | None = None,
+        audio_config: dict | None = None,
+        tts_enabled: bool | None = None,
+    ) -> None:
         if action == "start":
-            await self.start(glossary)
+            await self.start(glossary, audio_config=audio_config, tts_enabled=tts_enabled)
         elif action == "stop":
             await self.stop()
+        elif action == "tts_enabled":
+            if self._tts_player is not None and tts_enabled is not None:
+                self._tts_player.set_enabled(bool(tts_enabled))
 
-    async def start(self, glossary: dict | None = None) -> None:
+    def set_capture_suppress(self, suppress: bool) -> None:
+        if self._backend_tts:
+            return
+        if self._capture is not None:
+            self._capture.set_suppress_output(suppress)
+
+    async def start(
+        self,
+        glossary: dict | None = None,
+        audio_config: dict | None = None,
+        tts_enabled: bool | None = None,
+    ) -> None:
         if self._task and not self._task.done():
             return
 
         self._persisted = False
+        self._audio_config = audio_config
         self.state_label = "speaking"
         self._mapper = SubtitleMapper()
         bundle = GlossaryBundle.from_client_payload(glossary) or self._pending_glossary
@@ -232,19 +312,18 @@ class TranslationSession:
         )
         try:
             ast_config = load_ast_config()
+            self._backend_tts = ast_config.mode == "s2s" and ast_config.tts_playback == "backend"
             if ast_config.mode == "s2s":
-                await self.manager.broadcast(
-                    {
-                        "type": "tts_config",
-                        "format": ast_config.target_audio_format,
-                        "rate": ast_config.target_audio_rate,
-                    }
-                )
+                await self.manager.broadcast(self._build_tts_config_payload(ast_config))
         except ConfigError:
-            pass
-        self._task = asyncio.create_task(self._run_pipeline())
+            self._backend_tts = False
+        self._task = asyncio.create_task(self._run_pipeline(tts_enabled=tts_enabled))
 
     async def stop(self) -> None:
+        self.set_capture_suppress(False)
+        if self._tts_player is not None:
+            self._tts_player.stop()
+            self._tts_player = None
         if self._capture is not None:
             self._capture.stop()
         if self._flow is not None:
@@ -276,7 +355,7 @@ class TranslationSession:
             glossary=dict(state.static_glossary),
         )
 
-    async def _run_pipeline(self) -> None:
+    async def _run_pipeline(self, tts_enabled: bool | None = None) -> None:
         flow = self._flow
         if flow is None:
             return
@@ -287,20 +366,62 @@ class TranslationSession:
             self.state_label = "ready"
             return
 
+        backend_tts = config.mode == "s2s" and config.tts_playback == "backend"
+        self._backend_tts = backend_tts
+
         client = ASTClient(config, corpus=self._build_ast_corpus())
         mapper = self._mapper
         assert mapper is not None
 
+        tts_player: TtsPlayback | None = None
+        loopback_device = find_loopback_device()
+        tts_output_id = ""
+        tts_output_name = ""
+
         try:
-            async with LoopbackCapture() as capture:
+            loopback_device, tts_output_id, tts_output_name = resolve_audio_route(self._audio_config)
+        except AudioCaptureError as exc:
+            await self.manager.broadcast({"type": "status", "state": "error", "message": str(exc)})
+            self.state_label = "ready"
+            return
+
+        if backend_tts:
+            tts_player = TtsPlayback(
+                speaker_id=tts_output_id,
+                sample_rate=config.target_audio_rate,
+                audio_format=config.target_audio_format,
+            )
+            if tts_enabled is not None:
+                tts_player.set_enabled(bool(tts_enabled))
+            tts_player.start()
+            self._tts_player = tts_player
+
+        await self.manager.broadcast(
+            {
+                "type": "audio_route",
+                "capture": {"index": loopback_device.index, "name": loopback_device.name},
+                "tts_output": {"id": tts_output_id, "name": tts_output_name},
+                "playback": "backend" if backend_tts else "browser",
+            }
+        )
+
+        try:
+            async with LoopbackCapture(device=loopback_device) as capture:
                 self._capture = capture
                 async for event in client.translate_stream(capture.chunks()):
                     subtitle = mapper.map_event(event)
                     if subtitle is not None:
                         await flow.on_new_sentence(subtitle)
-                    tts_message = map_tts_event(event, config)
-                    if tts_message is not None:
-                        await self.manager.broadcast(tts_message)
+
+                    if backend_tts and tts_player is not None:
+                        feed_tts_playback(tts_player, event, config)
+                        tts_message = map_tts_event(event, config)
+                        if tts_message is not None and tts_message["type"] != "tts_audio":
+                            await self.manager.broadcast(tts_message)
+                    else:
+                        tts_message = map_tts_event(event, config)
+                        if tts_message is not None:
+                            await self.manager.broadcast(tts_message)
         except AudioCaptureError as exc:
             await self.manager.broadcast({"type": "status", "state": "error", "message": str(exc)})
         except Exception as exc:
@@ -308,6 +429,9 @@ class TranslationSession:
             await self.manager.broadcast({"type": "status", "state": "error", "message": str(exc)})
         finally:
             self._capture = None
+            if tts_player is not None:
+                tts_player.stop()
+                self._tts_player = None
             if flow is not None:
                 await flow.flush_pending()
                 await flow.finalize_session()
@@ -329,6 +453,10 @@ def create_app() -> FastAPI:
     app = FastAPI(title="LiveTransAI")
     manager = ConnectionManager()
     session = TranslationSession(manager)
+
+    @app.get("/api/audio/devices")
+    async def list_audio_devices_api() -> dict:
+        return build_audio_devices_payload()
 
     @app.post("/api/glossary/generate")
     async def generate_glossary(body: GlossaryGenerateRequest) -> dict:
@@ -368,7 +496,21 @@ def create_app() -> FastAPI:
                 action = payload.get("action")
                 if action in {"start", "stop"}:
                     glossary = payload.get("glossary") if action == "start" else None
-                    await session.handle_command(action, glossary=glossary)
+                    audio_config = payload.get("audio") if action == "start" else None
+                    tts_enabled = payload.get("tts_enabled") if action == "start" else None
+                    await session.handle_command(
+                        action,
+                        glossary=glossary,
+                        audio_config=audio_config,
+                        tts_enabled=tts_enabled,
+                    )
+                elif action == "tts_enabled":
+                    await session.handle_command(
+                        "tts_enabled",
+                        tts_enabled=bool(payload.get("enabled", True)),
+                    )
+                elif action == "suppress_capture":
+                    session.set_capture_suppress(bool(payload.get("suppress", True)))
         except WebSocketDisconnect:
             manager.disconnect(websocket)
             if not manager.connections and session.state_label == "ready":

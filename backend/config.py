@@ -17,8 +17,9 @@ class ASTConfig:
     source_language: str = "en"
     target_language: str = "zh"
     speaker_id: str = ""
-    target_audio_format: str = "ogg_opus"
+    target_audio_format: str = "pcm"
     target_audio_rate: int = 24000
+    tts_playback: str = "backend"
     sample_rate: int = 16000
     sample_bits: int = 16
     channels: int = 1
@@ -55,6 +56,7 @@ def load_ast_config() -> ASTConfig:
         speaker_id=os.getenv("AST_SPEAKER_ID", ASTConfig.speaker_id).strip(),
         target_audio_format=os.getenv("AST_TARGET_AUDIO_FORMAT", ASTConfig.target_audio_format).strip(),
         target_audio_rate=int(os.getenv("AST_TARGET_AUDIO_RATE", str(ASTConfig.target_audio_rate))),
+        tts_playback=os.getenv("TTS_PLAYBACK", ASTConfig.tts_playback).strip().lower(),
     )
 
 

@@ -12,6 +12,22 @@ if str(PROTO_ROOT) not in sys.path:
 from python_protogen.common.events_pb2 import Type  # noqa: E402
 
 
+def feed_tts_playback(player, event: ASTResponseEvent, config: ASTConfig) -> None:
+    if config.mode != "s2s":
+        return
+
+    if event.event == Type.TTSSentenceStart:
+        player.on_tts_start(event.sequence)
+        return
+
+    if event.event == Type.TTSResponse:
+        player.on_tts_audio(event.sequence, event.audio_data)
+        return
+
+    if event.event == Type.TTSSentenceEnd:
+        player.on_tts_end(event.sequence)
+
+
 def map_tts_event(event: ASTResponseEvent, config: ASTConfig) -> dict | None:
     if config.mode != "s2s":
         return None

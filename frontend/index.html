@@ -48,6 +48,20 @@
       </main>
 
       <footer class="footer">
+        <section id="audio-route-panel" class="audio-route-panel">
+          <div id="audio-route-controls" class="audio-route-controls">
+            <label class="audio-route-field">
+              <span class="audio-route-label">监听设备</span>
+              <select id="loopback-select" class="audio-route-select"></select>
+            </label>
+            <label class="audio-route-field">
+              <span class="audio-route-label">译文输出</span>
+              <select id="tts-output-select" class="audio-route-select"></select>
+            </label>
+          </div>
+          <p id="audio-route-status" class="audio-route-status hidden"></p>
+          <p id="audio-route-hint" class="audio-route-hint"></p>
+        </section>
         <div id="metrics-bar" class="metrics-bar">已翻译: 0 句</div>
         <div class="controls">
           <button id="btn-tts" type="button" class="btn-tts" aria-pressed="false" title="播放豆包同声传译中文语音">语音关</button>

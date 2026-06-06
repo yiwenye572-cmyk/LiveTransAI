@@ -18,8 +18,18 @@ const btnHistoryClose = document.getElementById("btn-history-close");
 const historyOverlay = document.getElementById("history-overlay");
 const historyList = document.getElementById("history-list");
 const historyDetail = document.getElementById("history-detail");
+const loopbackSelect = document.getElementById("loopback-select");
+const ttsOutputSelect = document.getElementById("tts-output-select");
+const audioRouteControls = document.getElementById("audio-route-controls");
+const audioRouteStatus = document.getElementById("audio-route-status");
+const audioRouteHint = document.getElementById("audio-route-hint");
+
+const LOOPBACK_STORAGE_KEY = "livetransai-loopback-index";
+const TTS_OUTPUT_STORAGE_KEY = "livetransai-tts-output-id";
 
 let selectedHistoryId = null;
+let audioDevicesLoaded = false;
+let sessionIsSpeaking = false;
 
 let socket = null;
 let sentenceCount = 0;
@@ -40,6 +50,11 @@ function setStatus(state, message) {
   statusBadge.textContent = message || STATUS_LABELS[state] || state;
   btnStart.disabled = state === "speaking";
   btnStop.disabled = state !== "speaking";
+  if (state === "speaking") {
+    setAudioRouteEditing(false);
+  } else if (state === "ready" || state === "finished" || state === "error") {
+    setAudioRouteEditing(true);
+  }
 }
 
 function sendCommand(action) {
@@ -52,8 +67,140 @@ function sendCommand(action) {
     if (stored && stored.term_map && Object.keys(stored.term_map).length > 0) {
       payload.glossary = stored;
     }
+    const audio = getSelectedAudioConfig();
+    if (audio) {
+      payload.audio = audio;
+    }
+    if (window.translationTts) {
+      payload.tts_enabled = window.translationTts.isEnabled();
+    }
   }
   socket.send(JSON.stringify(payload));
+}
+
+function sendTtsEnabled(enabled) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+  socket.send(JSON.stringify({ type: "command", action: "tts_enabled", enabled: Boolean(enabled) }));
+}
+
+function getSelectedAudioConfig() {
+  if (!loopbackSelect || !ttsOutputSelect) {
+    return null;
+  }
+  const loopbackIndex = Number(loopbackSelect.value);
+  const ttsOutputId = ttsOutputSelect.value;
+  if (!Number.isFinite(loopbackIndex) || !ttsOutputId) {
+    return null;
+  }
+  return {
+    loopback_index: loopbackIndex,
+    tts_output_id: ttsOutputId,
+  };
+}
+
+function persistAudioSelections() {
+  if (loopbackSelect && loopbackSelect.value) {
+    localStorage.setItem(LOOPBACK_STORAGE_KEY, loopbackSelect.value);
+  }
+  if (ttsOutputSelect && ttsOutputSelect.value) {
+    localStorage.setItem(TTS_OUTPUT_STORAGE_KEY, ttsOutputSelect.value);
+  }
+}
+
+function setAudioRouteEditing(enabled) {
+  sessionIsSpeaking = !enabled;
+  if (loopbackSelect) {
+    loopbackSelect.disabled = !enabled;
+  }
+  if (ttsOutputSelect) {
+    ttsOutputSelect.disabled = !enabled;
+  }
+  if (audioRouteControls) {
+    audioRouteControls.classList.toggle("hidden", !enabled);
+  }
+  if (audioRouteStatus) {
+    audioRouteStatus.classList.toggle("hidden", enabled);
+  }
+}
+
+function renderAudioRouteStatus(payload) {
+  if (!audioRouteStatus) {
+    return;
+  }
+  const captureName = payload?.capture?.name || "—";
+  const outputName = payload?.tts_output?.name || "—";
+  const playback = payload?.playback === "backend" ? "后端播放" : "浏览器播放";
+  audioRouteStatus.textContent = `监听：${captureName} · 译文：${outputName}（${playback}）`;
+}
+
+function populateSelect(select, options, valueKey, labelKey, storedValue) {
+  if (!select) {
+    return;
+  }
+  select.innerHTML = "";
+  for (const option of options) {
+    const element = document.createElement("option");
+    element.value = String(option[valueKey]);
+    element.textContent = option[labelKey];
+    if (option.is_default) {
+      element.textContent += "（默认）";
+    }
+    select.appendChild(element);
+  }
+  if (storedValue && options.some((option) => String(option[valueKey]) === String(storedValue))) {
+    select.value = String(storedValue);
+    return;
+  }
+  const defaultOption = options.find((option) => option.is_default) || options[0];
+  if (defaultOption) {
+    select.value = String(defaultOption[valueKey]);
+  }
+}
+
+async function loadAudioDevices() {
+  if (!loopbackSelect || !ttsOutputSelect) {
+    return;
+  }
+  try {
+    const response = await fetch("/api/audio/devices");
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = await response.json();
+    populateSelect(
+      loopbackSelect,
+      payload.loopbacks || [],
+      "index",
+      "name",
+      localStorage.getItem(LOOPBACK_STORAGE_KEY)
+    );
+    populateSelect(
+      ttsOutputSelect,
+      payload.outputs || [],
+      "id",
+      "name",
+      localStorage.getItem(TTS_OUTPUT_STORAGE_KEY)
+    );
+    if (audioRouteHint && payload.hint) {
+      audioRouteHint.textContent = payload.hint;
+    }
+    audioDevicesLoaded = true;
+    persistAudioSelections();
+  } catch (error) {
+    if (audioRouteHint) {
+      audioRouteHint.textContent = "无法加载音频设备列表，请确认后端已启动。";
+    }
+    console.error("Failed to load audio devices:", error);
+  }
+}
+
+function sendCaptureSuppress(suppress) {
+  if (!socket || socket.readyState !== WebSocket.OPEN) {
+    return;
+  }
+  socket.send(JSON.stringify({ type: "command", action: "suppress_capture", suppress: Boolean(suppress) }));
 }
 
 function resetUiForFreshSession() {
@@ -489,6 +636,11 @@ function connect() {
       }
       return;
     }
+    if (payload.type === "audio_route") {
+      renderAudioRouteStatus(payload);
+      setAudioRouteEditing(false);
+      return;
+    }
     if (payload.type === "tts_start") {
       if (window.translationTts) {
         window.translationTts.onStart(payload);
@@ -558,8 +710,10 @@ function updateTtsButton() {
   }
   if (!player.isAvailable()) {
     btnTts.title = "等待豆包 s2s 语音流（需 AST_MODE=s2s）";
+  } else if (player.isBackendMode()) {
+    btnTts.title = "控制后端译文语音播放（输出到所选「译文输出」设备）";
   } else {
-    btnTts.title = "播放豆包同声传译中文语音";
+    btnTts.title = "播放豆包同声传译中文语音（建议戴耳机避免回声）";
   }
 }
 
@@ -570,9 +724,18 @@ if (btnTts) {
     if (!window.translationTts) {
       return;
     }
-    window.translationTts.toggle();
+    const enabled = window.translationTts.toggle();
     updateTtsButton();
+    if (window.translationTts.isBackendMode() && sessionIsSpeaking) {
+      sendTtsEnabled(enabled);
+    }
   });
+}
+if (loopbackSelect) {
+  loopbackSelect.addEventListener("change", persistAudioSelections);
+}
+if (ttsOutputSelect) {
+  ttsOutputSelect.addEventListener("change", persistAudioSelections);
 }
 btnNewSession.addEventListener("click", () => {
   returnToSetupForNewSession();
@@ -589,4 +752,9 @@ renderEmptySubtitleState();
 renderEmptyFormattedState();
 resetSummary();
 updateTtsButton();
+setAudioRouteEditing(true);
+loadAudioDevices();
+if (window.translationTts) {
+  window.translationTts.setCaptureControl(sendCaptureSuppress);
+}
 connect();
