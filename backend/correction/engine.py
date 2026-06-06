@@ -8,7 +8,12 @@ from backend.llm.deepseek_client import chat_completion
 from backend.memory.memory_store import MemoryStore
 from backend.state.session_state import SessionState
 from backend.summary.running_summary import RunningSummary
-from backend.translator.languages import source_language_label, target_language_label
+from backend.translator.languages import (
+    source_language_label,
+    source_language_tag,
+    target_language_label,
+    target_language_tag,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -98,8 +103,8 @@ class CorrectionEngine:
         summary: RunningSummary,
         state: SessionState | None = None,
     ) -> str:
-        source_tag = (state.source_language if state else "en").upper()
-        target_tag = (state.target_language if state else "zh").upper()
+        source_tag = source_language_tag(state.source_language if state else "en")
+        target_tag = target_language_tag()
         focus_lines = []
         for item in window:
             focus_lines.append(

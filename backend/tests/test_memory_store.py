@@ -54,6 +54,26 @@ class MemoryStoreTests(unittest.TestCase):
         block = MemoryStore.recent_prompt_block(self.state)
         self.assertIn("【近期纠错记忆】", block)
         self.assertIn("d_001", block)
+        self.assertIn("EN:", block)
+        self.assertIn("ZH:", block)
+
+    def test_recent_prompt_block_uses_session_language_tags(self) -> None:
+        self.state.source_language = "ja"
+        self.store.append_batch(
+            [{"id": "d_001"}],
+            [
+                {
+                    "target_id": "d_001",
+                    "old_translation": "旧",
+                    "new_translation": "新",
+                    "reason": "测试",
+                }
+            ],
+            self.state,
+        )
+        block = MemoryStore.recent_prompt_block(self.state)
+        self.assertIn("JA:", block)
+        self.assertIn("ZH:", block)
 
 
 if __name__ == "__main__":

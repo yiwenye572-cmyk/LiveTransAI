@@ -7,23 +7,31 @@ from backend.glossary.prompt_utils import format_context_block, format_glossary_
 from backend.llm.deepseek_client import chat_completion
 from backend.state.session_state import SessionState
 from backend.summary.running_summary import RunningSummary
+from backend.translator.languages import (
+    source_language_label,
+    source_language_tag,
+    target_language_label,
+    target_language_tag,
+)
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """你是同声传译会话的记录员。根据【旧摘要】和【新增句子】，输出更新后的会话摘要 JSON。
+
+def build_summary_system_prompt(source_label: str, target_label: str) -> str:
+    return f"""你是同声传译会话的记录员。根据【旧摘要】和【新增句子】，输出更新后的会话摘要 JSON。
 
 要求：
 1. 保留仍相关的 topic、术语、要点，合并重复信息，删除过时细节
 2. bullet_points 最多 8 条，每条不超过 40 字
-3. term_map 只保留本场已出现术语，格式为 {"英文或中文源词": "推荐中文译法"}
+3. term_map 只保留本场已出现术语，格式为 {{"{source_label}源词": "推荐{target_label}译法"}}
 4. 不要编造未出现的信息
 
 输出 JSON 格式：
-{
+{{
   "topic": "演讲主题",
-  "term_map": {"federated learning": "联邦学习"},
+  "term_map": {{"federated learning": "联邦学习"}},
   "bullet_points": ["要点1", "要点2"]
-}
+}}
 
 只输出 JSON，不要 markdown。"""
 
@@ -48,10 +56,11 @@ class SummaryUpdater:
             return False
 
         user_content = self._format_input(state)
+        system_prompt = self._build_system_prompt(state)
         try:
             raw = await chat_completion(
                 self.config,
-                system=SYSTEM_PROMPT,
+                system=system_prompt,
                 user=user_content,
                 temperature=0.1,
             )
@@ -71,10 +80,17 @@ class SummaryUpdater:
         )
         return True
 
+    def _build_system_prompt(self, state: SessionState) -> str:
+        source_label = source_language_label(state.source_language)
+        target_label = target_language_label()
+        return build_summary_system_prompt(source_label, target_label)
+
     def _format_input(self, state: SessionState) -> str:
         summary = state.running_summary
         start_index = summary.last_summarized_at
         new_sentences = state.displayed_sentences[start_index:]
+        source_tag = source_language_tag(state.source_language)
+        target_tag = target_language_tag()
         old_summary = {
             "topic": summary.topic,
             "term_map": summary.term_map,
@@ -93,7 +109,8 @@ class SummaryUpdater:
         ]
         for item in new_sentences:
             blocks.append(
-                f'{item["id"]}\nEN: {item.get("source", "")}\nZH: {item.get("translation", "")}'
+                f'{item["id"]}\n{source_tag}: {item.get("source", "")}\n'
+                f'{target_tag}: {item.get("translation", "")}'
             )
         return "\n\n".join(blocks)
 
