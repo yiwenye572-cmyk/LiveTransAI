@@ -6,6 +6,7 @@ from backend.bus.subtitle_bus import SubtitleBus
 from backend.correction.engine import CorrectionEngine
 from backend.format.text_formatter import TextFormatter
 from backend.memory.memory_store import MemoryStore
+from backend.persist.session_writer import SessionWriter
 from backend.state.session_state import SessionState
 from backend.summary.updater import SummaryUpdater
 
@@ -33,6 +34,7 @@ class FlowController:
         summary_updater: SummaryUpdater,
         text_formatter: TextFormatter | None = None,
         memory_store: MemoryStore | None = None,
+        session_writer: type[SessionWriter] | None = None,
     ) -> None:
         self.state = state
         self.bus = bus
@@ -40,6 +42,7 @@ class FlowController:
         self.summary_updater = summary_updater
         self.text_formatter = text_formatter or TextFormatter()
         self.memory_store = memory_store or MemoryStore()
+        self.session_writer = session_writer or SessionWriter
         self.pending: list[dict] = []
         self._display_seq = 0
         self._commit_timer: asyncio.Task | None = None
@@ -292,6 +295,7 @@ class FlowController:
                 applied += 1
                 applied_items.append(item)
                 await self.bus.publish("correction", item)
+                self._persist_correction(item)
 
             await self._emit_formatted_updates(window, applied_items)
             logger.info(
@@ -319,3 +323,27 @@ class FlowController:
             sentence["version"] = new_version
             return True
         return False
+
+    def _persist_correction(self, item: dict) -> None:
+        session_dir = self.state.session_dir
+        if session_dir is None:
+            return
+
+        source = ""
+        for sentence in self.state.displayed_sentences:
+            if sentence.get("id") == item.get("target_id"):
+                source = str(sentence.get("source", ""))
+                break
+
+        record = {
+            "ts": time.time(),
+            "sentence_id": item.get("target_id", ""),
+            "base_version": item.get("base_version"),
+            "new_version": item.get("new_version"),
+            "source": source,
+            "old_translation": item.get("old_translation", ""),
+            "new_translation": item.get("new_translation", ""),
+            "reason": item.get("reason", ""),
+            "confidence": item.get("confidence"),
+        }
+        self.session_writer.append_correction(session_dir, record)

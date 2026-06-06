@@ -1,8 +1,10 @@
 import asyncio
 import logging
+import time
+import uuid
 from pathlib import Path
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 
 from backend.audio.capture import AudioCaptureError, LoopbackCapture
@@ -11,6 +13,8 @@ from backend.config import ConfigError, load_ast_config, load_deepseek_config
 from backend.controller.flow_controller import FlowController
 from backend.controller.subtitle_mapper import SubtitleMapper
 from backend.correction.engine import CorrectionEngine
+from backend.persist.session_reader import SessionReader
+from backend.persist.session_writer import SessionWriter
 from backend.state.session_state import SessionPhase, SessionState
 from backend.summary.updater import SummaryUpdater
 from backend.translator.ast_client import ASTClient
@@ -52,9 +56,18 @@ class TranslationSession:
         self._session_state: SessionState | None = None
         self._mapper: SubtitleMapper | None = None
         self._flow: FlowController | None = None
+        self._persisted = False
 
     def _build_pipeline(self) -> FlowController:
-        session_state = SessionState(phase=SessionPhase.RUNNING)
+        session_id = str(uuid.uuid4())
+        started_at = time.time()
+        session_dir = SessionWriter.ensure_session_dir(session_id, started_at=started_at)
+        session_state = SessionState(
+            phase=SessionPhase.RUNNING,
+            session_id=session_id,
+            started_at=started_at,
+            session_dir=session_dir,
+        )
         bus = SubtitleBus()
         correction_engine = CorrectionEngine(load_deepseek_config())
         summary_updater = SummaryUpdater(load_deepseek_config())
@@ -117,6 +130,7 @@ class TranslationSession:
         if self._task and not self._task.done():
             return
 
+        self._persisted = False
         self.state_label = "speaking"
         self._mapper = SubtitleMapper()
         self._flow = self._build_pipeline()
@@ -145,6 +159,7 @@ class TranslationSession:
         if self._flow is not None:
             await self._flow.flush_pending()
             await self._flow.finalize_session()
+        self._maybe_persist_session()
         if self._task is not None:
             try:
                 await self._task
@@ -191,15 +206,35 @@ class TranslationSession:
             if flow is not None:
                 await flow.flush_pending()
                 await flow.finalize_session()
+            self._maybe_persist_session()
             if self.state_label == "speaking":
                 self.state_label = "finished"
                 await self.manager.broadcast({"type": "status", "state": "finished"})
+
+    def _maybe_persist_session(self) -> None:
+        if self._persisted or self._session_state is None:
+            return
+        if not self._session_state.session_id:
+            return
+        SessionWriter.write_session_state(self._session_state)
+        self._persisted = True
 
 
 def create_app() -> FastAPI:
     app = FastAPI(title="LiveTransAI")
     manager = ConnectionManager()
     session = TranslationSession(manager)
+
+    @app.get("/api/sessions")
+    async def list_sessions() -> dict:
+        return {"sessions": SessionReader.list_sessions()}
+
+    @app.get("/api/sessions/{session_id}")
+    async def get_session(session_id: str) -> dict:
+        detail = SessionReader.get_session(session_id)
+        if detail is None:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return detail
 
     @app.websocket("/stream")
     async def stream(websocket: WebSocket) -> None:
