@@ -29,8 +29,13 @@ def print_ast_event(event) -> None:
             f"time={event.start_time}-{event.end_time} text={event.text}"
         )
     else:
-        detail = f" message={event.message}" if event.message else ""
-        print(f"[{event.event_name}] seq={event.sequence}{detail}")
+        parts = []
+        if event.message:
+            parts.append(f"message={event.message}")
+        if event.data_length:
+            parts.append(f"bytes={event.data_length}")
+        suffix = f" {' '.join(parts)}" if parts else ""
+        print(f"[{event.event_name}] seq={event.sequence}{suffix}")
 
 
 async def run(audio_path: Path) -> None:
