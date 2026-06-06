@@ -1,5 +1,6 @@
 import asyncio
 import inspect
+import os
 import threading
 import wave
 from collections.abc import AsyncIterator
@@ -214,6 +215,7 @@ class LoopbackCapture:
             ) as recorder:
                 while not self._stop.is_set():
                     samples = recorder.record(numframes=blocksize)
+                    samples = _amplify_quiet_loopback(samples)
                     pcm = _float_samples_to_pcm16(samples)
                     future = asyncio.run_coroutine_threadsafe(self._queue.put(pcm), self._loop)
                     future.result(timeout=5)
@@ -325,6 +327,28 @@ def _soundcard_microphone_for(device: AudioDevice):
         if microphone.id == device.id:
             return microphone
     raise AudioCaptureError(f"Soundcard loopback device disappeared: {device.name}")
+
+
+def _amplify_quiet_loopback(samples: np.ndarray) -> np.ndarray:
+    """Boost very quiet loopback captures (some Realtek + soundcard setups)."""
+    enabled = os.getenv("LOOPBACK_AUTO_GAIN", "1").strip().lower() not in ("0", "false", "no")
+    if not enabled:
+        return samples
+
+    target_peak = float(os.getenv("LOOPBACK_GAIN_TARGET_PEAK", "8000")) / 32767.0
+    max_gain = float(os.getenv("LOOPBACK_GAIN_MAX", "300"))
+    min_peak = float(os.getenv("LOOPBACK_GAIN_MIN_PEAK", "500")) / 32767.0
+
+    array = np.asarray(samples, dtype=np.float64)
+    if array.size == 0:
+        return samples
+
+    peak = float(np.max(np.abs(array)))
+    if peak >= min_peak or peak <= 1e-9:
+        return samples
+
+    gain = min(max_gain, target_peak / peak)
+    return np.clip(array * gain, -1.0, 1.0)
 
 
 def _float_samples_to_pcm16(samples: np.ndarray) -> bytes:
