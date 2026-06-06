@@ -32,3 +32,4 @@ class SessionState:
     context_instruction: str = ""
     tone_hint: str = ""
     static_glossary: dict[str, str] = field(default_factory=dict)
+    hot_words_list: list[str] = field(default_factory=list)

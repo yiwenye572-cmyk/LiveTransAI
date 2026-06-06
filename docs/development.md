@@ -90,6 +90,8 @@ http://127.0.0.1:8765
 
 Click **开始翻译**, then play English audio on your computer. Subtitles should appear in the page in real time.
 
+If you generate a glossary on `/setup.html` before starting, the same bundle is sent to Doubao AST at session start (`corpus.hot_words_list` for source recognition and `corpus.glossary_list` for translation hints) and to DeepSeek correction prompts (`static_glossary`).
+
 ## Async Correction (DeepSeek)
 
 The Web UI uses a dual-channel pipeline:

@@ -6,12 +6,12 @@ import re
 
 from backend.config import DeepSeekConfig
 from backend.glossary.glossary_bundle import GlossaryBundle
+from backend.glossary.hot_words import MAX_HOT_WORDS, derive_hot_words
 from backend.llm.deepseek_client import chat_completion
 
 logger = logging.getLogger(__name__)
 
 MAX_TERMS = 30
-MAX_HOT_WORDS = 20
 
 SYSTEM_PROMPT = """你是同声传译术语顾问。根据用户提供的业务场景和说明，生成英译中术语表。
 
@@ -97,14 +97,13 @@ def parse_glossary_response(
         raise GlossaryError("未生成有效术语，请调整场景描述后重试。")
 
     tone_hint = str(payload.get("tone_hint", "")).strip() or instruction
-    hot_words = GlossaryBundle._normalize_hot_words(payload.get("hot_words_list"))
-    if not hot_words:
-        hot_words = list(glossary.keys())[:MAX_HOT_WORDS]
+    raw_hot_words = GlossaryBundle._normalize_hot_words(payload.get("hot_words_list"))
+    hot_words = derive_hot_words(glossary, raw_hot_words, max_count=MAX_HOT_WORDS)
 
     return GlossaryBundle(
         scenario=scenario,
         instruction=instruction,
         tone_hint=tone_hint,
         glossary_list=glossary,
-        hot_words_list=hot_words[:MAX_HOT_WORDS],
+        hot_words_list=hot_words,
     )
