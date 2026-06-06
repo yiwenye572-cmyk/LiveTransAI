@@ -1,4 +1,5 @@
 import sys
+import time
 from pathlib import Path
 
 from backend.translator.ast_client import ASTResponseEvent
@@ -46,6 +47,10 @@ class SubtitleMapper:
                 "source": source_text,
                 "translation": translation_text,
                 "confidence": "fast",
+                "ast_sequence": sequence,
+                "start_time": event.start_time,
+                "end_time": event.end_time,
+                "received_at": time.time(),
             }
 
         return None

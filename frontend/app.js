@@ -7,12 +7,16 @@ const summaryMeta = document.getElementById("summary-meta");
 const summaryTopic = document.getElementById("summary-topic");
 const summaryTerms = document.getElementById("summary-terms");
 const summaryBullets = document.getElementById("summary-bullets");
+const formattedMeta = document.getElementById("formatted-meta");
+const formattedContent = document.getElementById("formatted-content");
 const btnStart = document.getElementById("btn-start");
 const btnStop = document.getElementById("btn-stop");
 
 let socket = null;
 let sentenceCount = 0;
 let correctionCount = 0;
+let memoryCount = 0;
+let formattedSentenceCount = 0;
 
 const STATUS_LABELS = {
   ready: "就绪",
@@ -35,10 +39,16 @@ function sendCommand(action) {
   socket.send(JSON.stringify({ type: "command", action }));
 }
 
-function renderEmptyState() {
+function renderEmptySubtitleState() {
   if (subtitleList.children.length === 0) {
     subtitleList.innerHTML = '<div class="empty-state">点击“开始翻译”，然后播放英文音频</div>';
   }
+}
+
+function renderEmptyFormattedState() {
+  formattedContent.innerHTML = '<div class="empty-state">纠错批次完成后，规整段落将在此追加</div>';
+  formattedMeta.textContent = "等待纠错批次…";
+  formattedSentenceCount = 0;
 }
 
 function appendSubtitle(payload) {
@@ -78,7 +88,11 @@ function applyCorrection(payload) {
     return;
   }
 
-  translationEl.innerHTML = `ZH <span class="translation-old">${escapeHtml(payload.old_translation || "")}</span> <span class="translation-new">${escapeHtml(payload.new_translation || "")}</span>`;
+  const reasonHtml = payload.reason
+    ? `<div class="correction-reason">修正：${escapeHtml(payload.reason)}</div>`
+    : "";
+
+  translationEl.innerHTML = `ZH <span class="translation-old">${escapeHtml(payload.old_translation || "")}</span> <span class="translation-new">${escapeHtml(payload.new_translation || "")}</span>${reasonHtml}`;
   item.dataset.version = String(payload.new_version);
   item.classList.add("subtitle-corrected");
   if (tagEl) {
@@ -86,10 +100,87 @@ function applyCorrection(payload) {
   }
 }
 
+function ensureParagraph(paragraphId, paragraphIndex) {
+  let paragraph = formattedContent.querySelector(`[data-paragraph-id="${paragraphId}"]`);
+  if (paragraph) {
+    return paragraph;
+  }
+
+  const empty = formattedContent.querySelector(".empty-state");
+  if (empty) {
+    empty.remove();
+  }
+
+  paragraph = document.createElement("div");
+  paragraph.className = "formatted-paragraph";
+  paragraph.dataset.paragraphId = paragraphId;
+
+  const paragraphs = formattedContent.querySelectorAll(".formatted-paragraph");
+  if (paragraphs.length === 0 || paragraphIndex >= paragraphs.length) {
+    formattedContent.appendChild(paragraph);
+  } else {
+    formattedContent.insertBefore(paragraph, paragraphs[paragraphIndex]);
+  }
+  return paragraph;
+}
+
+function appendFormattedDelta(payload) {
+  const paragraph = ensureParagraph(payload.paragraph_id, payload.paragraph_index ?? 0);
+  const span = document.createElement("span");
+  span.className = "formatted-sentence";
+  span.dataset.sentenceId = payload.sentence_id;
+  span.dataset.version = String(payload.version || 1);
+  span.textContent = payload.text || "";
+  paragraph.appendChild(span);
+  formattedSentenceCount += 1;
+  formattedMeta.textContent = `已规整 ${formattedSentenceCount} 句`;
+  formattedContent.scrollTop = formattedContent.scrollHeight;
+}
+
+function applyFormattedPatch(payload) {
+  const span = formattedContent.querySelector(`[data-sentence-id="${payload.target_id}"]`);
+  if (!span) {
+    return;
+  }
+  if (String(span.dataset.version) !== String(payload.base_version)) {
+    return;
+  }
+  span.textContent = payload.new_text || "";
+  span.dataset.version = String(payload.new_version);
+  span.classList.add("formatted-patched");
+}
+
+function renderFormattedSnapshot(payload) {
+  formattedContent.innerHTML = "";
+  formattedSentenceCount = 0;
+  const paragraphs = payload.paragraphs || [];
+  if (paragraphs.length === 0) {
+    renderEmptyFormattedState();
+    return;
+  }
+
+  paragraphs.forEach((text, index) => {
+    const paragraph = document.createElement("div");
+    paragraph.className = "formatted-paragraph";
+    paragraph.dataset.paragraphId = `p_${String(index + 1).padStart(3, "0")}`;
+    paragraph.textContent = text;
+    formattedContent.appendChild(paragraph);
+  });
+
+  formattedMeta.textContent = `已规整 ${payload.updated_at_sentence || paragraphs.length} 句`;
+}
+
 function updateMetrics(payload) {
   sentenceCount = payload.sentence_count ?? sentenceCount;
   correctionCount = payload.correction_count ?? correctionCount;
-  metricsBar.textContent = `已翻译: ${sentenceCount} 句 · 已修正: ${correctionCount} 处`;
+  memoryCount = payload.memory_count ?? memoryCount;
+  const mergeCount = payload.merge_count ?? 0;
+  const fragmentCount = payload.ast_fragment_count ?? 0;
+  const mergeHint =
+    fragmentCount > sentenceCount
+      ? ` · 合并 ${mergeCount} 次（AST ${fragmentCount} 段 → ${sentenceCount} 句）`
+      : "";
+  metricsBar.textContent = `已翻译: ${sentenceCount} 句 · 已修正: ${correctionCount} 处 · 记忆: ${memoryCount} 条${mergeHint}`;
 }
 
 function renderSummary(payload) {
@@ -140,7 +231,8 @@ function connect() {
 
   socket.addEventListener("open", () => {
     setStatus("ready");
-    renderEmptyState();
+    renderEmptySubtitleState();
+    renderEmptyFormattedState();
   });
 
   socket.addEventListener("message", (event) => {
@@ -161,6 +253,18 @@ function connect() {
       renderSummary(payload);
       return;
     }
+    if (payload.type === "formatted_delta") {
+      appendFormattedDelta(payload);
+      return;
+    }
+    if (payload.type === "formatted_patch") {
+      applyFormattedPatch(payload);
+      return;
+    }
+    if (payload.type === "formatted_snapshot") {
+      renderFormattedSnapshot(payload);
+      return;
+    }
     if (payload.type === "metrics") {
       updateMetrics(payload);
     }
@@ -175,6 +279,7 @@ function connect() {
 btnStart.addEventListener("click", () => sendCommand("start"));
 btnStop.addEventListener("click", () => sendCommand("stop"));
 
-renderEmptyState();
+renderEmptySubtitleState();
+renderEmptyFormattedState();
 resetSummary();
 connect();

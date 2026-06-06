@@ -63,6 +63,9 @@ class TranslationSession:
         bus.subscribe("commit_display", self._on_commit_display)
         bus.subscribe("correction", self._on_correction)
         bus.subscribe("summary_update", self._on_summary_update)
+        bus.subscribe("formatted_delta", self._on_formatted_delta)
+        bus.subscribe("formatted_patch", self._on_formatted_patch)
+        bus.subscribe("formatted_snapshot", self._on_formatted_snapshot)
 
         self._session_state = session_state
         return flow
@@ -78,6 +81,15 @@ class TranslationSession:
     async def _on_summary_update(self, payload: dict) -> None:
         await self.manager.broadcast(payload)
 
+    async def _on_formatted_delta(self, payload: dict) -> None:
+        await self.manager.broadcast(payload)
+
+    async def _on_formatted_patch(self, payload: dict) -> None:
+        await self.manager.broadcast(payload)
+
+    async def _on_formatted_snapshot(self, payload: dict) -> None:
+        await self.manager.broadcast(payload)
+
     async def _broadcast_metrics(self) -> None:
         if self._session_state is None:
             return
@@ -86,6 +98,9 @@ class TranslationSession:
                 "type": "metrics",
                 "sentence_count": self._session_state.sentence_count,
                 "correction_count": self._session_state.correction_count,
+                "merge_count": self._session_state.merge_count,
+                "ast_fragment_count": self._session_state.ast_fragment_count,
+                "memory_count": len(self._session_state.memory_entries),
                 "latency_p50": 0,
                 "latency_p99": 0,
                 "cost_estimate": 0,
@@ -115,11 +130,21 @@ class TranslationSession:
                 "updated_at_sentence": 0,
             }
         )
+        await self.manager.broadcast(
+            {
+                "type": "formatted_snapshot",
+                "paragraphs": [],
+                "updated_at_sentence": 0,
+            }
+        )
         self._task = asyncio.create_task(self._run_pipeline())
 
     async def stop(self) -> None:
         if self._capture is not None:
             self._capture.stop()
+        if self._flow is not None:
+            await self._flow.flush_pending()
+            await self._flow.finalize_session()
         if self._task is not None:
             try:
                 await self._task
@@ -163,6 +188,9 @@ class TranslationSession:
             await self.manager.broadcast({"type": "status", "state": "error", "message": str(exc)})
         finally:
             self._capture = None
+            if flow is not None:
+                await flow.flush_pending()
+                await flow.finalize_session()
             if self.state_label == "speaking":
                 self.state_label = "finished"
                 await self.manager.broadcast({"type": "status", "state": "finished"})

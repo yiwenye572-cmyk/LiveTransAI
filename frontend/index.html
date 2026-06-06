@@ -16,17 +16,31 @@
         <div id="status-badge" class="status-badge status-ready">就绪</div>
       </header>
 
-      <aside id="summary-panel" class="summary-panel">
-        <div class="summary-header">
-          <h2>会话摘要</h2>
-          <span id="summary-meta" class="summary-meta">等待更新…</span>
-        </div>
-        <div id="summary-topic" class="summary-topic">主题：—</div>
-        <div id="summary-terms" class="summary-terms"></div>
-        <ul id="summary-bullets" class="summary-bullets"></ul>
-      </aside>
+      <main class="main-grid">
+        <aside class="left-column">
+          <section id="summary-panel" class="summary-panel">
+            <div class="summary-header">
+              <h2>会话摘要</h2>
+              <span id="summary-meta" class="summary-meta">等待更新…</span>
+            </div>
+            <div id="summary-topic" class="summary-topic">主题：—</div>
+            <div id="summary-terms" class="summary-terms"></div>
+            <ul id="summary-bullets" class="summary-bullets"></ul>
+          </section>
 
-      <section id="subtitle-list" class="subtitle-list"></section>
+          <section id="formatted-panel" class="formatted-panel">
+            <div class="formatted-header">
+              <h2>规整译文</h2>
+              <span id="formatted-meta" class="formatted-meta">等待纠错批次…</span>
+            </div>
+            <div id="formatted-content" class="formatted-content">
+              <div class="empty-state">纠错批次完成后，规整段落将在此追加</div>
+            </div>
+          </section>
+        </aside>
+
+        <section id="subtitle-list" class="subtitle-list"></section>
+      </main>
 
       <footer class="footer">
         <div id="metrics-bar" class="metrics-bar">已翻译: 0 句</div>
