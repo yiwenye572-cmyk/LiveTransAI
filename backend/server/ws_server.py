@@ -19,7 +19,7 @@ from backend.audio.capture import (
 )
 from backend.audio.tts_playback import TtsPlayback
 from backend.bus.subtitle_bus import SubtitleBus
-from backend.config import ConfigError, load_ast_config, load_deepseek_config
+from backend.config import ConfigError, ast_config_for_session, load_ast_config, load_deepseek_config
 from backend.controller.flow_controller import FlowController
 from backend.controller.subtitle_mapper import SubtitleMapper
 from backend.controller.tts_mapper import feed_tts_playback, map_tts_event
@@ -31,6 +31,12 @@ from backend.state.session_state import SessionPhase, SessionState
 from backend.summary.updater import SummaryUpdater
 from backend.translator.ast_client import ASTClient
 from backend.translator.ast_corpus import AstCorpus
+from backend.translator.languages import (
+    build_languages_payload,
+    source_language_label,
+    target_language_label,
+    validate_source_language,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -133,9 +139,15 @@ class TranslationSession:
         self._persisted = False
         self._pending_glossary: GlossaryBundle | None = None
         self._audio_config: dict | None = None
+        self._source_language: str | None = None
         self._backend_tts = False
+        self._tts_enabled: bool | None = None
 
-    def _build_pipeline(self, glossary: GlossaryBundle | None = None) -> FlowController:
+    def _build_pipeline(
+        self,
+        glossary: GlossaryBundle | None = None,
+        source_language: str | None = None,
+    ) -> FlowController:
         session_id = str(uuid.uuid4())
         started_at = time.time()
         session_dir = SessionWriter.ensure_session_dir(session_id, started_at=started_at)
@@ -146,6 +158,9 @@ class TranslationSession:
             session_dir=session_dir,
         )
         apply_glossary_to_state(session_state, glossary)
+        if source_language is not None:
+            session_state.source_language = validate_source_language(source_language)
+            session_state.target_language = "zh"
         bus = SubtitleBus()
         correction_engine = CorrectionEngine(load_deepseek_config())
         summary_updater = SummaryUpdater(load_deepseek_config())
@@ -248,6 +263,21 @@ class TranslationSession:
                 pass
         if self._session_state is not None and self.state_label in {"speaking", "paused", "finished"}:
             await websocket.send_json(self._build_session_sync())
+            state = self._session_state
+            if state.source_language:
+                await websocket.send_json(
+                    {
+                        "type": "language_route",
+                        "source": {
+                            "code": state.source_language,
+                            "label": source_language_label(state.source_language),
+                        },
+                        "target": {
+                            "code": state.target_language,
+                            "label": target_language_label(),
+                        },
+                    }
+                )
 
     def _build_tts_config_payload(self, ast_config) -> dict:
         return {
@@ -263,9 +293,15 @@ class TranslationSession:
         glossary: dict | None = None,
         audio_config: dict | None = None,
         tts_enabled: bool | None = None,
+        source_language: str | None = None,
     ) -> None:
         if action == "start":
-            await self.start(glossary, audio_config=audio_config, tts_enabled=tts_enabled)
+            await self.start(
+                glossary,
+                audio_config=audio_config,
+                tts_enabled=tts_enabled,
+                source_language=source_language,
+            )
         elif action == "stop":
             await self.stop()
         elif action == "pause":
@@ -287,16 +323,19 @@ class TranslationSession:
         glossary: dict | None = None,
         audio_config: dict | None = None,
         tts_enabled: bool | None = None,
+        source_language: str | None = None,
     ) -> None:
         if self._task and not self._task.done():
             return
 
         self._persisted = False
         self._audio_config = audio_config
+        self._source_language = validate_source_language(source_language)
+        self._tts_enabled = tts_enabled
         self.state_label = "speaking"
         self._mapper = SubtitleMapper()
         bundle = GlossaryBundle.from_client_payload(glossary) or self._pending_glossary
-        self._flow = self._build_pipeline(bundle)
+        self._flow = self._build_pipeline(bundle, source_language=self._source_language)
         await self.manager.broadcast({"type": "status", "state": "speaking"})
         await self.manager.broadcast(
             {
@@ -338,6 +377,14 @@ class TranslationSession:
             return
         self.state_label = "speaking"
         self._session_state.phase = SessionPhase.RUNNING
+
+        pipeline_dead = self._task is None or self._task.done()
+        if pipeline_dead:
+            logger.info("Translation pipeline ended during pause; restarting")
+            self._task = asyncio.create_task(self._run_pipeline(tts_enabled=self._tts_enabled))
+            await self.manager.broadcast({"type": "status", "state": "speaking"})
+            return
+
         if self._capture is not None:
             self._capture.resume()
         logger.info("Translation session resumed")
@@ -392,6 +439,12 @@ class TranslationSession:
             self.state_label = "ready"
             return
 
+        source_language = validate_source_language(self._source_language or config.source_language)
+        config = ast_config_for_session(config, source_language)
+        if self._session_state is not None:
+            self._session_state.source_language = source_language
+            self._session_state.target_language = config.target_language
+
         backend_tts = config.mode == "s2s" and config.tts_playback == "backend"
         self._backend_tts = backend_tts
 
@@ -430,6 +483,16 @@ class TranslationSession:
                 "playback": "backend" if backend_tts else "browser",
             }
         )
+        await self.manager.broadcast(
+            {
+                "type": "language_route",
+                "source": {
+                    "code": source_language,
+                    "label": source_language_label(source_language),
+                },
+                "target": {"code": config.target_language, "label": target_language_label()},
+            }
+        )
 
         try:
             async with LoopbackCapture(device=loopback_device) as capture:
@@ -460,11 +523,22 @@ class TranslationSession:
                 self._tts_player = None
             if flow is not None:
                 await flow.flush_pending()
-                await flow.finalize_session()
-            self._maybe_persist_session()
+                if self.state_label != "paused":
+                    await flow.finalize_session()
+                    self._maybe_persist_session()
             if self.state_label == "speaking":
                 self.state_label = "finished"
                 await self.manager.broadcast({"type": "status", "state": "finished"})
+            elif self.state_label == "paused":
+                logger.warning("Translation pipeline ended while paused; resume will restart if possible")
+                await self.manager.broadcast(
+                    {
+                        "type": "status",
+                        "state": "paused",
+                        "reason": "pipeline_lost",
+                        "message": "AST 连接已断开，点击恢复将重新连接",
+                    }
+                )
 
     def _maybe_persist_session(self) -> None:
         if self._persisted or self._session_state is None:
@@ -479,6 +553,15 @@ def create_app() -> FastAPI:
     app = FastAPI(title="LiveTransAI")
     manager = ConnectionManager()
     session = TranslationSession(manager)
+
+    @app.get("/api/languages")
+    async def list_languages_api() -> dict:
+        try:
+            base = load_ast_config()
+            default_source = base.source_language
+        except ConfigError:
+            default_source = "en"
+        return build_languages_payload(default_source=default_source)
 
     @app.get("/api/audio/devices")
     async def list_audio_devices_api() -> dict:
@@ -524,11 +607,13 @@ def create_app() -> FastAPI:
                     glossary = payload.get("glossary") if action == "start" else None
                     audio_config = payload.get("audio") if action == "start" else None
                     tts_enabled = payload.get("tts_enabled") if action == "start" else None
+                    source_language = payload.get("source_language") if action == "start" else None
                     await session.handle_command(
                         action,
                         glossary=glossary,
                         audio_config=audio_config,
                         tts_enabled=tts_enabled,
+                        source_language=source_language,
                     )
                 elif action == "tts_enabled":
                     await session.handle_command(

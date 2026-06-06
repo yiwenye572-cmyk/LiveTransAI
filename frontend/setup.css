@@ -64,6 +64,45 @@
   margin-top: 0;
 }
 
+.setup-section-title {
+  margin: 0 0 8px;
+  font-size: 0.95rem;
+  color: #bdc1c6;
+}
+
+.setup-language-panel {
+  margin-bottom: 18px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #2a2f3a;
+}
+
+.setup-language-row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.setup-select {
+  appearance: auto;
+}
+
+.setup-target-language {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid #3c4043;
+  background: #23262d;
+  color: #bdc1c6;
+  font-size: 0.95rem;
+}
+
+.setup-language-hint {
+  margin: 8px 0 0;
+  font-size: 0.75rem;
+  color: #80868b;
+  line-height: 1.4;
+}
+
 .setup-input {
   width: 100%;
   box-sizing: border-box;

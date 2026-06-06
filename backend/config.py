@@ -1,7 +1,9 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from dotenv import load_dotenv
+
+from backend.translator.languages import TARGET_LANGUAGE, validate_source_language
 
 
 class ConfigError(RuntimeError):
@@ -57,6 +59,14 @@ def load_ast_config() -> ASTConfig:
         target_audio_format=os.getenv("AST_TARGET_AUDIO_FORMAT", ASTConfig.target_audio_format).strip(),
         target_audio_rate=int(os.getenv("AST_TARGET_AUDIO_RATE", str(ASTConfig.target_audio_rate))),
         tts_playback=os.getenv("TTS_PLAYBACK", ASTConfig.tts_playback).strip().lower(),
+    )
+
+
+def ast_config_for_session(base: ASTConfig, source_language: str | None) -> ASTConfig:
+    return replace(
+        base,
+        source_language=validate_source_language(source_language or base.source_language),
+        target_language=TARGET_LANGUAGE,
     )
 
 
