@@ -11,6 +11,13 @@ const formattedMeta = document.getElementById("formatted-meta");
 const formattedContent = document.getElementById("formatted-content");
 const btnStart = document.getElementById("btn-start");
 const btnStop = document.getElementById("btn-stop");
+const btnHistory = document.getElementById("btn-history");
+const btnHistoryClose = document.getElementById("btn-history-close");
+const historyOverlay = document.getElementById("history-overlay");
+const historyList = document.getElementById("history-list");
+const historyDetail = document.getElementById("history-detail");
+
+let selectedHistoryId = null;
 
 let socket = null;
 let sentenceCount = 0;
@@ -226,6 +233,157 @@ function escapeHtml(text) {
     .replaceAll("'", "&#39;");
 }
 
+function formatTimestamp(ts) {
+  if (!ts) {
+    return "—";
+  }
+  return new Date(ts * 1000).toLocaleString("zh-CN", { hour12: false });
+}
+
+function openHistoryPanel() {
+  historyOverlay.classList.remove("hidden");
+  historyOverlay.setAttribute("aria-hidden", "false");
+  loadHistoryList();
+}
+
+function closeHistoryPanel() {
+  historyOverlay.classList.add("hidden");
+  historyOverlay.setAttribute("aria-hidden", "true");
+}
+
+async function loadHistoryList() {
+  historyList.innerHTML = '<div class="empty-state">加载中…</div>';
+  try {
+    const response = await fetch("/api/sessions");
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = await response.json();
+    renderHistoryList(payload.sessions || []);
+  } catch (error) {
+    historyList.innerHTML = `<div class="empty-state">加载失败：${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function renderHistoryList(sessions) {
+  if (sessions.length === 0) {
+    historyList.innerHTML = '<div class="empty-state">暂无历史会话</div>';
+    historyDetail.innerHTML = '<div class="empty-state">完成一次翻译并停止后，会话将出现在这里</div>';
+    return;
+  }
+
+  historyList.innerHTML = "";
+  for (const session of sessions) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "history-item";
+    button.dataset.sessionId = session.session_id;
+    if (session.session_id === selectedHistoryId) {
+      button.classList.add("active");
+    }
+
+    const title = (session.topic || "").trim() || "未命名会话";
+    const meta = `${formatTimestamp(session.stopped_at)} · ${session.sentence_count || 0} 句 · 修正 ${session.correction_count || 0} 处`;
+    const preview = (session.preview_zh || "").trim() || "（无规整译文预览）";
+
+    button.innerHTML = `
+      <div class="history-item-title">${escapeHtml(title)}</div>
+      <div class="history-item-meta">${escapeHtml(meta)}</div>
+      <div class="history-item-preview">${escapeHtml(preview)}</div>
+    `;
+    button.addEventListener("click", () => loadHistoryDetail(session.session_id));
+    historyList.appendChild(button);
+  }
+
+  if (!selectedHistoryId && sessions[0]) {
+    loadHistoryDetail(sessions[0].session_id);
+  }
+}
+
+async function loadHistoryDetail(sessionId) {
+  selectedHistoryId = sessionId;
+  for (const item of historyList.querySelectorAll(".history-item")) {
+    item.classList.toggle("active", item.dataset.sessionId === sessionId);
+  }
+
+  historyDetail.innerHTML = '<div class="empty-state">加载详情…</div>';
+  try {
+    const response = await fetch(`/api/sessions/${encodeURIComponent(sessionId)}`);
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+    const payload = await response.json();
+    renderHistoryDetail(payload);
+  } catch (error) {
+    historyDetail.innerHTML = `<div class="empty-state">加载失败：${escapeHtml(error.message)}</div>`;
+  }
+}
+
+function renderHistoryDetail(payload) {
+  const meta = payload.meta || {};
+  const summary = payload.summary || {};
+  const paragraphs = payload.formatted?.paragraphs || [];
+  const sentences = payload.sentences || [];
+
+  const topic = (summary.topic || meta.topic || "").trim() || "—";
+  const termEntries = Object.entries(summary.term_map || {});
+  const termsHtml = termEntries.length
+    ? termEntries
+        .map(([source, target]) => `<span class="summary-term">${escapeHtml(source)} → ${escapeHtml(target)}</span>`)
+        .join("")
+    : '<span class="summary-meta">无术语</span>';
+
+  const bullets = summary.bullet_points || [];
+  const bulletsHtml = bullets.length
+    ? `<ul class="summary-bullets">${bullets.map((point) => `<li>${escapeHtml(point)}</li>`).join("")}</ul>`
+    : '<div class="summary-meta">无要点</div>';
+
+  const formattedHtml = paragraphs.length
+    ? paragraphs
+        .map((text) => `<div class="formatted-paragraph">${escapeHtml(text)}</div>`)
+        .join("")
+    : '<div class="empty-state">无规整译文</div>';
+
+  const sentencesHtml = sentences.length
+    ? sentences
+        .map(
+          (item) => `
+            <article class="subtitle-item">
+              <div class="subtitle-meta">
+                <span>${escapeHtml(item.id || "")}</span>
+                <span class="subtitle-tag">v${escapeHtml(String(item.version || 1))}</span>
+              </div>
+              <div class="subtitle-source">EN ${escapeHtml(item.source || "")}</div>
+              <div class="subtitle-translation">ZH ${escapeHtml(item.translation || "")}</div>
+            </article>
+          `
+        )
+        .join("")
+    : '<div class="empty-state">无句级记录</div>';
+
+  historyDetail.innerHTML = `
+    <div class="history-section">
+      <h3>会话信息</h3>
+      <div class="summary-meta">${escapeHtml(formatTimestamp(meta.started_at))} → ${escapeHtml(formatTimestamp(meta.stopped_at))}</div>
+      <div class="summary-meta">${escapeHtml(String(meta.sentence_count || 0))} 句 · 修正 ${escapeHtml(String(meta.correction_count || 0))} 处 · 术语 ${escapeHtml(String(meta.term_count || 0))} 条</div>
+    </div>
+    <div class="history-section summary-panel">
+      <h3>摘要</h3>
+      <div class="summary-topic">主题：${escapeHtml(topic)}</div>
+      <div class="summary-terms">${termsHtml}</div>
+      ${bulletsHtml}
+    </div>
+    <div class="history-section formatted-panel">
+      <h3>规整译文</h3>
+      <div class="formatted-content">${formattedHtml}</div>
+    </div>
+    <div class="history-section">
+      <h3>句级字幕</h3>
+      <div class="history-sentences">${sentencesHtml}</div>
+    </div>
+  `;
+}
+
 function connect() {
   socket = new WebSocket(WS_URL);
 
@@ -278,6 +436,13 @@ function connect() {
 
 btnStart.addEventListener("click", () => sendCommand("start"));
 btnStop.addEventListener("click", () => sendCommand("stop"));
+btnHistory.addEventListener("click", openHistoryPanel);
+btnHistoryClose.addEventListener("click", closeHistoryPanel);
+historyOverlay.addEventListener("click", (event) => {
+  if (event.target === historyOverlay) {
+    closeHistoryPanel();
+  }
+});
 
 renderEmptySubtitleState();
 renderEmptyFormattedState();

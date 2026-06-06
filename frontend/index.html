@@ -14,6 +14,7 @@
           <p class="subtitle">AI 同声传译助手</p>
         </div>
         <div id="status-badge" class="status-badge status-ready">就绪</div>
+        <button id="btn-history" type="button" class="btn-history">历史</button>
       </header>
 
       <main class="main-grid">
@@ -49,6 +50,23 @@
           <button id="btn-stop" type="button" disabled>停止</button>
         </div>
       </footer>
+    </div>
+
+    <div id="history-overlay" class="history-overlay hidden" aria-hidden="true">
+      <div class="history-panel">
+        <div class="history-header">
+          <h2>历史会话</h2>
+          <button id="btn-history-close" type="button" class="btn-history-close">关闭</button>
+        </div>
+        <div class="history-body">
+          <aside id="history-list" class="history-list">
+            <div class="empty-state">加载中…</div>
+          </aside>
+          <section id="history-detail" class="history-detail">
+            <div class="empty-state">选择一条历史记录查看详情</div>
+          </section>
+        </div>
+      </div>
     </div>
     <script src="/app.js"></script>
   </body>
