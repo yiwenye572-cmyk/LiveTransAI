@@ -3,6 +3,7 @@ import logging
 import re
 
 from backend.config import DeepSeekConfig
+from backend.glossary.prompt_utils import format_context_block, format_glossary_block
 from backend.llm.deepseek_client import chat_completion
 from backend.memory.memory_store import MemoryStore
 from backend.state.session_state import SessionState
@@ -57,10 +58,11 @@ class CorrectionEngine:
             return []
 
         user_content = self._format_prompt(window, summary, state)
+        system_prompt = self._build_system_prompt(state)
         try:
             raw = await chat_completion(
                 self.config,
-                system=SYSTEM_PROMPT,
+                system=system_prompt,
                 user=user_content,
                 temperature=0.2,
             )
@@ -69,6 +71,20 @@ class CorrectionEngine:
             return []
 
         return self._parse_corrections(raw, window)
+
+    def _build_system_prompt(self, state: SessionState | None) -> str:
+        if state is None or not state.static_glossary:
+            return SYSTEM_PROMPT
+
+        lines = [
+            SYSTEM_PROMPT,
+            "",
+            "【业务场景】",
+            format_context_block(state.context_scenario, state.tone_hint),
+            "以下术语译法必须保持一致：",
+            format_glossary_block(state.static_glossary),
+        ]
+        return "\n".join(lines)
 
     def _format_prompt(
         self,

@@ -3,6 +3,7 @@ import logging
 import re
 
 from backend.config import DeepSeekConfig
+from backend.glossary.prompt_utils import format_context_block, format_glossary_block
 from backend.llm.deepseek_client import chat_completion
 from backend.state.session_state import SessionState
 from backend.summary.running_summary import RunningSummary
@@ -46,7 +47,7 @@ class SummaryUpdater:
         if not new_sentences:
             return False
 
-        user_content = self._format_input(state.running_summary, new_sentences)
+        user_content = self._format_input(state)
         try:
             raw = await chat_completion(
                 self.config,
@@ -70,18 +71,31 @@ class SummaryUpdater:
         )
         return True
 
-    def _format_input(self, summary: RunningSummary, new_sentences: list[dict]) -> str:
+    def _format_input(self, state: SessionState) -> str:
+        summary = state.running_summary
+        start_index = summary.last_summarized_at
+        new_sentences = state.displayed_sentences[start_index:]
         old_summary = {
             "topic": summary.topic,
             "term_map": summary.term_map,
             "bullet_points": summary.bullet_points,
         }
-        lines = ["【旧摘要】", json.dumps(old_summary, ensure_ascii=False), "", "【新增句子】"]
+        blocks = [
+            format_context_block(state.context_scenario, state.tone_hint),
+            "",
+            "【静态术语表】",
+            format_glossary_block(state.static_glossary),
+            "",
+            "【旧摘要】",
+            json.dumps(old_summary, ensure_ascii=False),
+            "",
+            "【新增句子】",
+        ]
         for item in new_sentences:
-            lines.append(
+            blocks.append(
                 f'{item["id"]}\nEN: {item.get("source", "")}\nZH: {item.get("translation", "")}'
             )
-        return "\n\n".join(lines)
+        return "\n\n".join(blocks)
 
     def _parse_json(self, raw: str) -> dict | None:
         text = raw.strip()

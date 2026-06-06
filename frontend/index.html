@@ -14,11 +14,21 @@
           <p class="subtitle">AI 同声传译助手</p>
         </div>
         <div id="status-badge" class="status-badge status-ready">就绪</div>
+        <a class="header-link" href="/setup.html">术语配置</a>
         <button id="btn-history" type="button" class="btn-history">历史</button>
       </header>
 
       <main class="main-grid">
         <aside class="left-column">
+          <section id="glossary-panel" class="glossary-panel">
+            <div class="glossary-header">
+              <h2>本场术语</h2>
+              <a class="glossary-edit-link" href="/setup.html">去配置</a>
+            </div>
+            <div id="glossary-loaded-meta" class="summary-meta">未加载术语表</div>
+            <div id="glossary-loaded-terms" class="summary-terms"></div>
+          </section>
+
           <section id="summary-panel" class="summary-panel">
             <div class="summary-header">
               <h2>会话摘要</h2>
@@ -70,6 +80,7 @@
         </div>
       </div>
     </div>
+    <script src="/glossary.js"></script>
     <script src="/app.js"></script>
   </body>
 </html>
