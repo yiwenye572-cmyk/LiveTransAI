@@ -92,6 +92,16 @@ Click **开始翻译**, then play English audio on your computer. Subtitles shou
 
 If you generate a glossary on `/setup.html` before starting, the same bundle is sent to Doubao AST at session start (`corpus.hot_words_list` for source recognition and `corpus.glossary_list` for translation hints) and to DeepSeek correction prompts (`static_glossary`).
 
+### Pause / Resume / Stop
+
+Doubao AST has no native pause API. LiveTransAI implements pause at the application layer:
+
+- **Pause**: stop enqueueing loopback audio (no new `TaskRequest` to AST); AST WebSocket stays open; session state is preserved.
+- **Resume**: continue capture and sending audio on the same AST session.
+- **Stop**: send `FinishSession` (102), persist the session, return to ready.
+
+Use **Pause** during breaks; use **Stop** when the talk is over or if paused for a long time (AST may time out on silence).
+
 ## Async Correction (DeepSeek)
 
 The Web UI uses a dual-channel pipeline:

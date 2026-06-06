@@ -192,6 +192,11 @@ h1 {
   color: #f1948a;
 }
 
+.status-paused {
+  background: #3a2e1e;
+  color: #f5b041;
+}
+
 .status-finished {
   background: #2a2f3a;
   color: #bdc1c6;
@@ -444,6 +449,11 @@ button:disabled {
 
 #btn-start {
   background: #1a73e8;
+  color: white;
+}
+
+#btn-pause {
+  background: #5f6368;
   color: white;
 }
 

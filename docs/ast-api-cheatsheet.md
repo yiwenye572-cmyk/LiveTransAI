@@ -147,6 +147,8 @@ S2S 额外需要 `target_audio`（如 `format: pcm`, `rate: 24000`）及可选 `
 { "event": 102 }
 ```
 
+Application-layer **pause** does not send a Doubao pause event; the backend simply stops sending `TaskRequest` audio while keeping the session open. **Stop** uses `FinishSession` as above.
+
 ---
 
 ## 6. 接收端 Event（本项目关注）
