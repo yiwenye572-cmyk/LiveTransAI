@@ -2,6 +2,12 @@
   box-sizing: border-box;
 }
 
+html,
+body {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
@@ -10,13 +16,15 @@ body {
 }
 
 .app {
-  min-height: 100vh;
+  height: 100%;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .header,
 .footer {
+  flex-shrink: 0;
   padding: 16px 20px;
   background: #171a21;
   border-bottom: 1px solid #2a2f3a;
@@ -96,6 +104,11 @@ h1 {
   display: grid;
   grid-template-columns: minmax(280px, 36%) 1fr;
   min-height: 0;
+  overflow: hidden;
+}
+
+.main-grid > * {
+  min-height: 0;
 }
 
 .left-column {
@@ -105,6 +118,7 @@ h1 {
   padding: 12px;
   border-right: 1px solid #2a2f3a;
   min-height: 0;
+  overflow: hidden;
 }
 
 .summary-panel,
@@ -115,21 +129,28 @@ h1 {
   border: 1px solid #2a2f3a;
 }
 
-.summary-panel {
-  flex: 0 0 auto;
-  max-height: 38%;
-  overflow-y: auto;
+.left-column .summary-panel,
+.left-column .formatted-panel {
+  min-height: 0;
 }
 
-.formatted-panel {
-  flex: 1;
+.left-column .summary-panel {
+  flex: 0 1 38%;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  overflow: hidden;
+}
+
+.left-column .formatted-panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .summary-header,
 .formatted-header {
+  flex-shrink: 0;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -182,9 +203,19 @@ h1 {
   display: none;
 }
 
-.formatted-content {
+.left-column .summary-scroll,
+.left-column .formatted-content {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.summary-scroll {
+  line-height: 1.5;
+}
+
+.formatted-content {
   line-height: 1.8;
   font-size: 0.95rem;
   color: #e8eaed;
@@ -209,6 +240,7 @@ h1 {
 
 .subtitle-list {
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 20px;
   display: flex;
   flex-direction: column;
@@ -440,16 +472,16 @@ button:disabled {
 @media (max-width: 900px) {
   .main-grid {
     grid-template-columns: 1fr;
+    grid-template-rows: minmax(0, 42%) minmax(0, 1fr);
   }
 
   .left-column {
     border-right: none;
     border-bottom: 1px solid #2a2f3a;
-    max-height: 45vh;
   }
 
-  .summary-panel {
-    max-height: none;
+  .left-column .summary-panel {
+    flex: 0 1 42%;
   }
 
   .history-body {
