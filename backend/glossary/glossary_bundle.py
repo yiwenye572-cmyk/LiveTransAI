@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from backend.glossary.hot_words import MAX_HOT_WORDS, derive_hot_words
+
 
 @dataclass(frozen=True)
 class GlossaryBundle:
@@ -33,9 +35,8 @@ class GlossaryBundle:
         scenario = str(payload.get("scenario", "")).strip()
         instruction = str(payload.get("instruction", "")).strip()
         tone_hint = str(payload.get("tone_hint", "")).strip() or instruction
-        hot_words = cls._normalize_hot_words(payload.get("hot_words_list"))
-        if not hot_words:
-            hot_words = list(glossary.keys())[:20]
+        raw_hot_words = cls._normalize_hot_words(payload.get("hot_words_list"))
+        hot_words = derive_hot_words(glossary, raw_hot_words, max_count=MAX_HOT_WORDS)
 
         return cls(
             scenario=scenario,
