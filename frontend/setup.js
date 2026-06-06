@@ -153,7 +153,11 @@ async function generateGlossary() {
     const response = await fetch("/api/glossary/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ scenario, instruction }),
+      body: JSON.stringify({
+        scenario,
+        instruction,
+        source_language: sourceLanguageSelect?.value || getStoredSourceLanguage(),
+      }),
     });
     const payload = await response.json().catch(() => ({}));
     if (!response.ok) {

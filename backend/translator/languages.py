@@ -40,6 +40,14 @@ def source_language_label(code: str) -> str:
     return item.label if item else code
 
 
+def source_language_tag(code: str) -> str:
+    return validate_source_language(code).upper()
+
+
+def target_language_tag() -> str:
+    return TARGET_LANGUAGE.upper()
+
+
 def target_language_label() -> str:
     return TARGET_LANGUAGE_LABEL
 

@@ -1,12 +1,20 @@
 import json
 import unittest
 
-from backend.glossary.generator import GlossaryError, MAX_TERMS, parse_glossary_response
+from backend.glossary.generator import GlossaryError, MAX_TERMS, build_glossary_system_prompt, parse_glossary_response
 from backend.glossary.glossary_bundle import GlossaryBundle
 from backend.state.session_state import SessionState
 
 
 class ParseGlossaryResponseTests(unittest.TestCase):
+    def test_build_glossary_system_prompt_uses_source_language(self) -> None:
+        en_prompt = build_glossary_system_prompt("en")
+        ja_prompt = build_glossary_system_prompt("ja")
+        self.assertIn("英语→中文", en_prompt)
+        self.assertIn("英语源词/短语", en_prompt)
+        self.assertIn("日语→中文", ja_prompt)
+        self.assertIn("日语源词/短语", ja_prompt)
+
     def test_parses_plain_json(self) -> None:
         raw = """
         {

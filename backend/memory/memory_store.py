@@ -2,6 +2,7 @@ import time
 
 from backend.memory.memory_entry import MemoryEntry
 from backend.state.session_state import SessionState
+from backend.translator.languages import source_language_tag, target_language_tag
 
 
 class MemoryStore:
@@ -66,10 +67,12 @@ class MemoryStore:
             return ""
 
         lines = ["【近期纠错记忆】"]
+        source_tag = source_language_tag(state.source_language)
+        target_tag = target_language_tag()
         for entry in state.memory_entries[-limit:]:
             hints = "；".join(entry.correction_hints) if entry.correction_hints else "—"
             lines.append(
-                f'{entry.sentence_id} EN: {entry.source}\n'
-                f'ZH: {entry.translation}\nhints: {hints}'
+                f'{entry.sentence_id} {source_tag}: {entry.source}\n'
+                f'{target_tag}: {entry.translation}\nhints: {hints}'
             )
         return "\n\n".join(lines)

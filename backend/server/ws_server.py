@@ -46,6 +46,7 @@ FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
 class GlossaryGenerateRequest(BaseModel):
     scenario: str = Field(min_length=1, max_length=200)
     instruction: str = Field(min_length=1, max_length=300)
+    source_language: str | None = None
 
 
 AUDIO_DEVICES_HINT = (
@@ -571,7 +572,11 @@ def create_app() -> FastAPI:
     async def generate_glossary(body: GlossaryGenerateRequest) -> dict:
         generator = GlossaryGenerator(load_deepseek_config())
         try:
-            bundle = await generator.generate(body.scenario, body.instruction)
+            bundle = await generator.generate(
+                body.scenario,
+                body.instruction,
+                source_language=body.source_language,
+            )
         except GlossaryError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         session._pending_glossary = bundle

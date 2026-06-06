@@ -8,26 +8,48 @@ from backend.config import DeepSeekConfig
 from backend.glossary.glossary_bundle import GlossaryBundle
 from backend.glossary.hot_words import MAX_HOT_WORDS, derive_hot_words
 from backend.llm.deepseek_client import chat_completion
+from backend.translator.languages import (
+    source_language_label,
+    target_language_label,
+    validate_source_language,
+)
 
 logger = logging.getLogger(__name__)
 
 MAX_TERMS = 30
 
-SYSTEM_PROMPT = """你是同声传译术语顾问。根据用户提供的业务场景和说明，生成英译中术语表。
+_GLOSSARY_EXAMPLES: dict[str, tuple[str, str]] = {
+    "en": ("federated learning", "联邦学习"),
+    "ja": ("機械学習", "机器学习"),
+    "pt": ("aprendizado de máquina", "机器学习"),
+    "es": ("aprendizaje automático", "机器学习"),
+    "id": ("pembelajaran mesin", "机器学习"),
+    "de": ("maschinelles Lernen", "机器学习"),
+    "fr": ("apprentissage automatique", "机器学习"),
+}
+
+
+def build_glossary_system_prompt(source_language: str) -> str:
+    code = validate_source_language(source_language)
+    source_label = source_language_label(code)
+    target_label = target_language_label()
+    example_source, example_target = _GLOSSARY_EXAMPLES.get(code, ("source term", "中文译法"))
+
+    return f"""你是同声传译术语顾问。根据用户提供的业务场景和说明，生成{source_label}→{target_label}术语表。
 
 要求：
-1. 输出 15~25 条常见、实用的英→中术语（不要超过 30 条）
-2. glossary_list 的 key 为英文源词/短语，value 为推荐中文译法
-3. hot_words_list 从 glossary 英文 key 中选取最容易听错的 10~20 个
+1. 输出 15~25 条常见、实用的{source_label}→{target_label}术语（不要超过 30 条）
+2. glossary_list 的 key 为{source_label}源词/短语，value 为推荐{target_label}译法
+3. hot_words_list 从 glossary 的{source_label} key 中选取最容易听错的 10~20 个
 4. tone_hint 用一句话概括翻译风格要求
 5. 不要编造过于冷门、不会在演讲中出现的词
 
 只输出 JSON，格式如下：
-{
+{{
   "tone_hint": "...",
-  "glossary_list": { "federated learning": "联邦学习" },
-  "hot_words_list": ["federated learning"]
-}"""
+  "glossary_list": {{ "{example_source}": "{example_target}" }},
+  "hot_words_list": ["{example_source}"]
+}}"""
 
 
 class GlossaryError(RuntimeError):
@@ -42,7 +64,12 @@ class GlossaryGenerator:
     def enabled(self) -> bool:
         return self.config is not None
 
-    async def generate(self, scenario: str, instruction: str) -> GlossaryBundle:
+    async def generate(
+        self,
+        scenario: str,
+        instruction: str,
+        source_language: str | None = None,
+    ) -> GlossaryBundle:
         if not self.config:
             raise GlossaryError("DeepSeek 未配置，无法生成术语表。请在 .env 中设置 DEEPSEEK_API_KEY。")
 
@@ -51,11 +78,17 @@ class GlossaryGenerator:
         if not scenario_text or not instruction_text:
             raise GlossaryError("业务场景和说明不能为空。")
 
-        user_content = f"业务场景：{scenario_text}\n说明：{instruction_text}"
+        resolved_language = validate_source_language(source_language)
+        user_content = (
+            f"源语言：{source_language_label(resolved_language)}\n"
+            f"目标语言：{target_language_label()}\n"
+            f"业务场景：{scenario_text}\n"
+            f"说明：{instruction_text}"
+        )
         try:
             raw = await chat_completion(
                 self.config,
-                system=SYSTEM_PROMPT,
+                system=build_glossary_system_prompt(resolved_language),
                 user=user_content,
                 temperature=0.3,
             )

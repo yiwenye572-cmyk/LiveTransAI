@@ -61,21 +61,27 @@ function renderLanguageRoute(payload) {
   appSubtitle.textContent = `${DEFAULT_APP_SUBTITLE} · ${payload.source.label} → ${payload.target.label}`;
 }
 
-function renderStoredLanguageHint() {
+const SOURCE_LANGUAGE_LABELS = {
+  en: "英语",
+  ja: "日语",
+  pt: "葡萄牙语",
+  es: "西班牙语",
+  id: "印尼语",
+  de: "德语",
+  fr: "法语",
+};
+
+function getStoredSourceLanguageLabel() {
   const stored = loadSessionConfig();
-  if (!stored?.source_language || !appSubtitle) {
+  const code = stored?.source_language || "en";
+  return SOURCE_LANGUAGE_LABELS[code] || code;
+}
+
+function renderStoredLanguageHint() {
+  if (!appSubtitle) {
     return;
   }
-  const labels = {
-    en: "英语",
-    ja: "日语",
-    pt: "葡萄牙语",
-    es: "西班牙语",
-    id: "印尼语",
-    de: "德语",
-    fr: "法语",
-  };
-  const sourceLabel = labels[stored.source_language] || stored.source_language;
+  const sourceLabel = getStoredSourceLanguageLabel();
   appSubtitle.textContent = `${DEFAULT_APP_SUBTITLE} · ${sourceLabel} → 中文`;
 }
 
@@ -291,7 +297,9 @@ function restoreSessionSync(payload) {
 
 function renderEmptySubtitleState() {
   if (subtitleList.children.length === 0) {
-    subtitleList.innerHTML = '<div class="empty-state">点击“开始翻译”，然后播放英文音频</div>';
+    const sourceLabel = getStoredSourceLanguageLabel();
+    subtitleList.innerHTML =
+      `<div class="empty-state">点击“开始翻译”，然后播放${sourceLabel}音频</div>`;
   }
 }
 
