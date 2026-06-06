@@ -253,14 +253,14 @@ class TranslationSession:
 
     async def send_initial_state(self, websocket: WebSocket) -> None:
         await websocket.send_json({"type": "status", "state": self.state_label})
-        if self.state_label == "speaking":
+        if self.state_label in {"speaking", "paused"}:
             try:
                 ast_config = load_ast_config()
                 if ast_config.mode == "s2s":
                     await websocket.send_json(self._build_tts_config_payload(ast_config))
             except ConfigError:
                 pass
-        if self._session_state is not None and self.state_label in {"speaking", "finished"}:
+        if self._session_state is not None and self.state_label in {"speaking", "paused", "finished"}:
             await websocket.send_json(self._build_session_sync())
             state = self._session_state
             if state.source_language:
@@ -303,6 +303,10 @@ class TranslationSession:
             )
         elif action == "stop":
             await self.stop()
+        elif action == "pause":
+            await self.pause()
+        elif action == "resume":
+            await self.resume()
         elif action == "tts_enabled":
             if self._tts_player is not None and tts_enabled is not None:
                 self._tts_player.set_enabled(bool(tts_enabled))
@@ -356,6 +360,26 @@ class TranslationSession:
             self._backend_tts = False
         self._task = asyncio.create_task(self._run_pipeline(tts_enabled=tts_enabled))
 
+    async def pause(self, reason: str = "user") -> None:
+        if self.state_label != "speaking" or self._session_state is None:
+            return
+        self.state_label = "paused"
+        self._session_state.phase = SessionPhase.PAUSED
+        if self._capture is not None:
+            self._capture.pause()
+        logger.info("Translation session paused (%s)", reason)
+        await self.manager.broadcast({"type": "status", "state": "paused", "reason": reason})
+
+    async def resume(self) -> None:
+        if self.state_label != "paused" or self._session_state is None:
+            return
+        self.state_label = "speaking"
+        self._session_state.phase = SessionPhase.RUNNING
+        if self._capture is not None:
+            self._capture.resume()
+        logger.info("Translation session resumed")
+        await self.manager.broadcast({"type": "status", "state": "speaking"})
+
     async def stop(self) -> None:
         self.set_capture_suppress(False)
         if self._tts_player is not None:
@@ -366,6 +390,8 @@ class TranslationSession:
         if self._flow is not None:
             await self._flow.flush_pending()
             await self._flow.finalize_session()
+        if self._session_state is not None:
+            self._session_state.phase = SessionPhase.STOPPED
         self._maybe_persist_session()
         if self._task is not None:
             try:
@@ -556,7 +582,7 @@ def create_app() -> FastAPI:
                 if payload.get("type") != "command":
                     continue
                 action = payload.get("action")
-                if action in {"start", "stop"}:
+                if action in {"start", "stop", "pause", "resume"}:
                     glossary = payload.get("glossary") if action == "start" else None
                     audio_config = payload.get("audio") if action == "start" else None
                     tts_enabled = payload.get("tts_enabled") if action == "start" else None

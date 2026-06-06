@@ -11,6 +11,7 @@ const summaryBullets = document.getElementById("summary-bullets");
 const formattedMeta = document.getElementById("formatted-meta");
 const formattedContent = document.getElementById("formatted-content");
 const btnStart = document.getElementById("btn-start");
+const btnPause = document.getElementById("btn-pause");
 const btnStop = document.getElementById("btn-stop");
 const btnTts = document.getElementById("btn-tts");
 const btnNewSession = document.getElementById("btn-new-session");
@@ -42,6 +43,7 @@ let pendingInitialSync = true;
 const STATUS_LABELS = {
   ready: "就绪",
   speaking: "翻译中",
+  paused: "已暂停",
   finished: "已完成",
   error: "错误",
 };
@@ -80,9 +82,14 @@ function renderStoredLanguageHint() {
 function setStatus(state, message) {
   statusBadge.className = `status-badge status-${state}`;
   statusBadge.textContent = message || STATUS_LABELS[state] || state;
-  btnStart.disabled = state === "speaking";
-  btnStop.disabled = state !== "speaking";
-  if (state === "speaking") {
+  btnStart.disabled = state === "speaking" || state === "paused";
+  const sessionActive = state === "speaking" || state === "paused";
+  btnStop.disabled = !sessionActive;
+  if (btnPause) {
+    btnPause.disabled = !sessionActive;
+    btnPause.textContent = state === "paused" ? "恢复" : "暂停";
+  }
+  if (sessionActive) {
     setAudioRouteEditing(false);
   } else if (state === "ready" || state === "finished" || state === "error") {
     setAudioRouteEditing(true);
@@ -648,7 +655,7 @@ function connect() {
     }
     if (payload.type === "status") {
       setStatus(payload.state, payload.message);
-      if (payload.state === "speaking") {
+      if (payload.state === "speaking" || payload.state === "paused") {
         markLiveSessionActive();
       } else if (payload.state === "ready" || payload.state === "finished") {
         clearLiveSessionActive();
@@ -755,6 +762,12 @@ function updateTtsButton() {
 }
 
 btnStart.addEventListener("click", () => sendCommand("start"));
+if (btnPause) {
+  btnPause.addEventListener("click", () => {
+    const isPaused = statusBadge.classList.contains("status-paused");
+    sendCommand(isPaused ? "resume" : "pause");
+  });
+}
 btnStop.addEventListener("click", () => sendCommand("stop"));
 if (btnTts) {
   btnTts.addEventListener("click", () => {

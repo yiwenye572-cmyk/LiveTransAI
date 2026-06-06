@@ -206,6 +206,7 @@ class LoopbackCapture:
         self._loop: asyncio.AbstractEventLoop | None = None
         self._thread: threading.Thread | None = None
         self._stop = threading.Event()
+        self._paused = threading.Event()
         self._error: Exception | None = None
         self._microphone = None
         self._suppress_output = threading.Event()
@@ -239,6 +240,16 @@ class LoopbackCapture:
     def stop(self) -> None:
         self._stop.set()
 
+    def pause(self) -> None:
+        self._paused.set()
+
+    def resume(self) -> None:
+        self._paused.clear()
+
+    @property
+    def is_paused(self) -> bool:
+        return self._paused.is_set()
+
     async def chunks(self) -> AsyncIterator[bytes]:
         if self._queue is None:
             raise AudioCaptureError("LoopbackCapture is not started.")
@@ -264,6 +275,8 @@ class LoopbackCapture:
             ) as recorder:
                 while not self._stop.is_set():
                     samples = recorder.record(numframes=blocksize)
+                    if self._paused.is_set():
+                        continue
                     if self._suppress_output.is_set():
                         pcm = self._silence_pcm
                     else:
