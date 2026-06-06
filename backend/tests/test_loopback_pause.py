@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from backend.audio.capture import LoopbackCapture
 from backend.server.ws_server import ConnectionManager, TranslationSession
@@ -26,6 +26,8 @@ class TranslationSessionPauseTests(unittest.IsolatedAsyncioTestCase):
         self.session._session_state = SessionState(phase=SessionPhase.RUNNING)
         self.mock_capture = MagicMock()
         self.session._capture = self.mock_capture
+        self.session._task = MagicMock()
+        self.session._task.done.return_value = False
         self.broadcasts: list[dict] = []
         self.manager.broadcast = self._capture_broadcast
 
@@ -63,6 +65,23 @@ class TranslationSessionPauseTests(unittest.IsolatedAsyncioTestCase):
         await self.session.resume()
         self.mock_capture.resume.assert_not_called()
         self.assertEqual(self.broadcasts, [])
+
+    async def test_resume_restarts_pipeline_when_task_done(self) -> None:
+        self.session.state_label = "paused"
+        self.session._session_state.phase = SessionPhase.PAUSED
+        done_task = MagicMock()
+        done_task.done.return_value = True
+        self.session._task = done_task
+        new_task = MagicMock()
+
+        with patch("backend.server.ws_server.asyncio.create_task", return_value=new_task) as create_task:
+            await self.session.resume()
+
+        self.assertEqual(self.session.state_label, "speaking")
+        create_task.assert_called_once()
+        self.mock_capture.resume.assert_not_called()
+        self.assertEqual(self.session._task, new_task)
+        self.assertEqual(self.broadcasts[-1], {"type": "status", "state": "speaking"})
 
 
 if __name__ == "__main__":

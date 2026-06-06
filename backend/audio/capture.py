@@ -2,6 +2,7 @@ import asyncio
 import inspect
 import os
 import threading
+import time
 import wave
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
@@ -274,14 +275,16 @@ class LoopbackCapture:
                 channels=self.config.channels,
             ) as recorder:
                 while not self._stop.is_set():
-                    samples = recorder.record(numframes=blocksize)
                     if self._paused.is_set():
-                        continue
-                    if self._suppress_output.is_set():
                         pcm = self._silence_pcm
+                        time.sleep(self.config.chunk_ms / 1000)
                     else:
-                        samples = _amplify_quiet_loopback(samples)
-                        pcm = _float_samples_to_pcm16(samples)
+                        samples = recorder.record(numframes=blocksize)
+                        if self._suppress_output.is_set():
+                            pcm = self._silence_pcm
+                        else:
+                            samples = _amplify_quiet_loopback(samples)
+                            pcm = _float_samples_to_pcm16(samples)
                     future = asyncio.run_coroutine_threadsafe(self._queue.put(pcm), self._loop)
                     future.result(timeout=5)
         except Exception as exc:

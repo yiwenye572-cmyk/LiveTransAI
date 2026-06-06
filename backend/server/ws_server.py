@@ -141,6 +141,7 @@ class TranslationSession:
         self._audio_config: dict | None = None
         self._source_language: str | None = None
         self._backend_tts = False
+        self._tts_enabled: bool | None = None
 
     def _build_pipeline(
         self,
@@ -330,6 +331,7 @@ class TranslationSession:
         self._persisted = False
         self._audio_config = audio_config
         self._source_language = validate_source_language(source_language)
+        self._tts_enabled = tts_enabled
         self.state_label = "speaking"
         self._mapper = SubtitleMapper()
         bundle = GlossaryBundle.from_client_payload(glossary) or self._pending_glossary
@@ -375,6 +377,14 @@ class TranslationSession:
             return
         self.state_label = "speaking"
         self._session_state.phase = SessionPhase.RUNNING
+
+        pipeline_dead = self._task is None or self._task.done()
+        if pipeline_dead:
+            logger.info("Translation pipeline ended during pause; restarting")
+            self._task = asyncio.create_task(self._run_pipeline(tts_enabled=self._tts_enabled))
+            await self.manager.broadcast({"type": "status", "state": "speaking"})
+            return
+
         if self._capture is not None:
             self._capture.resume()
         logger.info("Translation session resumed")
@@ -513,11 +523,22 @@ class TranslationSession:
                 self._tts_player = None
             if flow is not None:
                 await flow.flush_pending()
-                await flow.finalize_session()
-            self._maybe_persist_session()
+                if self.state_label != "paused":
+                    await flow.finalize_session()
+                    self._maybe_persist_session()
             if self.state_label == "speaking":
                 self.state_label = "finished"
                 await self.manager.broadcast({"type": "status", "state": "finished"})
+            elif self.state_label == "paused":
+                logger.warning("Translation pipeline ended while paused; resume will restart if possible")
+                await self.manager.broadcast(
+                    {
+                        "type": "status",
+                        "state": "paused",
+                        "reason": "pipeline_lost",
+                        "message": "AST 连接已断开，点击恢复将重新连接",
+                    }
+                )
 
     def _maybe_persist_session(self) -> None:
         if self._persisted or self._session_state is None:
