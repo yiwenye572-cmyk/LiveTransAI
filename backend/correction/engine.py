@@ -4,6 +4,8 @@ import re
 
 from backend.config import DeepSeekConfig
 from backend.llm.deepseek_client import chat_completion
+from backend.memory.memory_store import MemoryStore
+from backend.state.session_state import SessionState
 from backend.summary.running_summary import RunningSummary
 
 logger = logging.getLogger(__name__)
@@ -45,11 +47,16 @@ class CorrectionEngine:
     def enabled(self) -> bool:
         return self.config is not None
 
-    async def run(self, window: list[dict], summary: RunningSummary) -> list[dict]:
+    async def run(
+        self,
+        window: list[dict],
+        summary: RunningSummary,
+        state: SessionState | None = None,
+    ) -> list[dict]:
         if not self.config or not window:
             return []
 
-        user_content = self._format_prompt(window, summary)
+        user_content = self._format_prompt(window, summary, state)
         try:
             raw = await chat_completion(
                 self.config,
@@ -63,7 +70,12 @@ class CorrectionEngine:
 
         return self._parse_corrections(raw, window)
 
-    def _format_prompt(self, window: list[dict], summary: RunningSummary) -> str:
+    def _format_prompt(
+        self,
+        window: list[dict],
+        summary: RunningSummary,
+        state: SessionState | None = None,
+    ) -> str:
         focus_lines = []
         for item in window:
             focus_lines.append(
@@ -72,12 +84,23 @@ class CorrectionEngine:
                 f'ZH: {item.get("translation", "")}'
             )
 
-        return (
-            "【会话摘要】\n"
-            f"{summary.to_prompt_block()}\n\n"
-            "【待校对段落 - 仅可修改下列句子】\n"
-            f"{chr(10).join(focus_lines)}"
+        blocks = [
+            "【会话摘要】",
+            summary.to_prompt_block(),
+        ]
+        if state is not None:
+            memory_block = MemoryStore.recent_prompt_block(state, limit=5)
+            if memory_block:
+                blocks.extend(["", memory_block])
+
+        blocks.extend(
+            [
+                "",
+                "【待校对段落 - 仅可修改下列句子】",
+                chr(10).join(focus_lines),
+            ]
         )
+        return "\n".join(blocks)
 
     def _parse_corrections(self, raw: str, window: list[dict]) -> list[dict]:
         text = raw.strip()

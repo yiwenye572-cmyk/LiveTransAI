@@ -72,37 +72,60 @@ h1 {
   color: #ff8a80;
 }
 
-.subtitle-list {
+.main-grid {
   flex: 1;
-  overflow-y: auto;
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  grid-template-columns: minmax(280px, 36%) 1fr;
+  min-height: 0;
 }
 
-.summary-panel {
-  margin: 12px 20px 0;
+.left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  border-right: 1px solid #2a2f3a;
+  min-height: 0;
+}
+
+.summary-panel,
+.formatted-panel {
   padding: 14px 16px;
   border-radius: 12px;
   background: #171a21;
   border: 1px solid #2a2f3a;
 }
 
-.summary-header {
+.summary-panel {
+  flex: 0 0 auto;
+  max-height: 38%;
+  overflow-y: auto;
+}
+
+.formatted-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.summary-header,
+.formatted-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.summary-header h2 {
+.summary-header h2,
+.formatted-header h2 {
   margin: 0;
   font-size: 0.95rem;
   color: #bdc1c6;
 }
 
-.summary-meta {
+.summary-meta,
+.formatted-meta {
   font-size: 0.75rem;
   color: #9aa0a6;
 }
@@ -138,6 +161,40 @@ h1 {
 
 .summary-bullets:empty {
   display: none;
+}
+
+.formatted-content {
+  flex: 1;
+  overflow-y: auto;
+  line-height: 1.8;
+  font-size: 0.95rem;
+  color: #e8eaed;
+}
+
+.formatted-paragraph {
+  margin-bottom: 14px;
+}
+
+.formatted-paragraph:last-child {
+  margin-bottom: 0;
+}
+
+.formatted-sentence {
+  display: inline;
+}
+
+.formatted-sentence.formatted-patched {
+  background: rgba(61, 90, 254, 0.18);
+  border-radius: 4px;
+}
+
+.subtitle-list {
+  overflow-y: auto;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
 }
 
 .subtitle-item {
@@ -184,6 +241,12 @@ h1 {
   color: #8ab4f8;
 }
 
+.correction-reason {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: #9aa0a6;
+}
+
 .metrics-bar {
   margin-bottom: 12px;
   color: #9aa0a6;
@@ -221,5 +284,22 @@ button:disabled {
 .empty-state {
   color: #9aa0a6;
   text-align: center;
-  padding: 48px 16px;
+  padding: 24px 12px;
+  font-size: 0.875rem;
+}
+
+@media (max-width: 900px) {
+  .main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .left-column {
+    border-right: none;
+    border-bottom: 1px solid #2a2f3a;
+    max-height: 45vh;
+  }
+
+  .summary-panel {
+    max-height: none;
+  }
 }
