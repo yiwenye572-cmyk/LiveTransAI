@@ -1,4 +1,5 @@
 const GLOSSARY_STORAGE_KEY = "livetransai_glossary";
+const LIVE_SESSION_KEY = "livetransai_live_active";
 
 function loadStoredGlossary() {
   try {
@@ -18,6 +19,18 @@ function loadStoredGlossary() {
 
 function saveStoredGlossary(data) {
   sessionStorage.setItem(GLOSSARY_STORAGE_KEY, JSON.stringify(data));
+}
+
+function markLiveSessionActive() {
+  sessionStorage.setItem(LIVE_SESSION_KEY, "1");
+}
+
+function clearLiveSessionActive() {
+  sessionStorage.removeItem(LIVE_SESSION_KEY);
+}
+
+function isLiveSessionActive() {
+  return sessionStorage.getItem(LIVE_SESSION_KEY) === "1";
 }
 
 function renderTermMap(container, termMap) {

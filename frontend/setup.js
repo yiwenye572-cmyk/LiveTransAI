@@ -4,6 +4,13 @@ const btnGenerate = document.getElementById("btn-generate-glossary");
 const setupStatus = document.getElementById("setup-status");
 const glossaryPreview = document.getElementById("glossary-preview");
 const glossaryCount = document.getElementById("glossary-count");
+const setupHeaderAction = document.getElementById("setup-header-action");
+const setupMain = document.getElementById("setup-main");
+const setupFormPanel = document.getElementById("setup-form-panel");
+const setupHeaderSubtitle = document.querySelector(".setup-header .subtitle");
+
+const params = new URLSearchParams(window.location.search);
+const isViewMode = params.get("mode") === "view" || isLiveSessionActive();
 
 function setStatus(message, isError = false) {
   setupStatus.textContent = message;
@@ -17,9 +24,29 @@ function renderPreview(data) {
   renderTermMap(glossaryPreview, termMap);
 }
 
+function applyViewModeUi() {
+  if (!isViewMode) {
+    return;
+  }
+
+  document.body.classList.add("setup-view-only");
+  setupMain.classList.add("setup-main-view");
+  scenarioInput.readOnly = true;
+  instructionInput.readOnly = true;
+  btnGenerate.hidden = true;
+  document.getElementById("btn-enter-live").hidden = true;
+  setupHeaderAction.textContent = "返回同传";
+  setupHeaderAction.href = "/";
+  setupHeaderSubtitle.textContent = "本场术语表（只读），查看后可返回当前同传会话";
+  setupFormPanel.querySelector(".setup-actions").hidden = true;
+}
+
 function restoreFormFromStorage() {
   const stored = loadStoredGlossary();
   if (!stored) {
+    if (isViewMode) {
+      setStatus("本场尚未配置术语表");
+    }
     return;
   }
   if (stored.scenario) {
@@ -30,11 +57,26 @@ function restoreFormFromStorage() {
   }
   if (stored.term_map && Object.keys(stored.term_map).length > 0) {
     renderPreview(stored);
-    setStatus(`已加载上次生成的 ${Object.keys(stored.term_map).length} 条术语`);
+    if (isViewMode) {
+      const scenario = (stored.scenario || "").trim();
+      setStatus(
+        scenario
+          ? `${scenario} · 共 ${Object.keys(stored.term_map).length} 条术语（只读）`
+          : `共 ${Object.keys(stored.term_map).length} 条术语（只读）`
+      );
+    } else {
+      setStatus(`已加载上次生成的 ${Object.keys(stored.term_map).length} 条术语`);
+    }
+  } else if (isViewMode) {
+    setStatus("本场尚未配置术语表");
   }
 }
 
 async function generateGlossary() {
+  if (isViewMode) {
+    return;
+  }
+
   const scenario = scenarioInput.value.trim();
   const instruction = instructionInput.value.trim();
   if (!scenario || !instruction) {
@@ -65,5 +107,6 @@ async function generateGlossary() {
   }
 }
 
+applyViewModeUi();
 btnGenerate.addEventListener("click", generateGlossary);
 restoreFormFromStorage();
