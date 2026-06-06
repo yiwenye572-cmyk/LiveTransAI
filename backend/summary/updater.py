@@ -4,7 +4,8 @@ import re
 
 from backend.config import DeepSeekConfig
 from backend.glossary.prompt_utils import format_context_block, format_glossary_block
-from backend.llm.deepseek_client import chat_completion
+from backend.llm.deepseek_client import ChatCompletionResult, chat_completion
+from backend.utils.session_metrics import SessionMetrics
 from backend.state.session_state import SessionState
 from backend.summary.running_summary import RunningSummary
 from backend.translator.languages import (
@@ -58,7 +59,7 @@ class SummaryUpdater:
         user_content = self._format_input(state)
         system_prompt = self._build_system_prompt(state)
         try:
-            raw = await chat_completion(
+            result = await chat_completion(
                 self.config,
                 system=system_prompt,
                 user=user_content,
@@ -66,9 +67,11 @@ class SummaryUpdater:
             )
         except Exception:
             logger.exception("Summary update API call failed")
+            state.metrics.record_llm_call("summary", latency_ms=0, ok=False)
             return False
 
-        payload = self._parse_json(raw)
+        self._record_llm_call(state.metrics, result)
+        payload = self._parse_json(result.content)
         if payload is None:
             return False
 
@@ -79,6 +82,17 @@ class SummaryUpdater:
             len(new_sentences),
         )
         return True
+
+    @staticmethod
+    def _record_llm_call(metrics: SessionMetrics, result: ChatCompletionResult) -> None:
+        metrics.record_llm_call(
+            "summary",
+            latency_ms=result.latency_ms,
+            prompt_tokens=result.prompt_tokens,
+            completion_tokens=result.completion_tokens,
+            total_tokens=result.total_tokens,
+            ok=True,
+        )
 
     def _build_system_prompt(self, state: SessionState) -> str:
         source_label = source_language_label(state.source_language)

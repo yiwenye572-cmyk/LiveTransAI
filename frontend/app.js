@@ -434,11 +434,17 @@ function updateMetrics(payload) {
   memoryCount = payload.memory_count ?? memoryCount;
   const mergeCount = payload.merge_count ?? 0;
   const fragmentCount = payload.ast_fragment_count ?? 0;
+  const latencyP50 = payload.latency_p50;
+  const latencyP99 = payload.latency_p99;
+  const latencyPart =
+    latencyP50 != null && latencyP50 > 0
+      ? `延迟: ${Number(latencyP50).toFixed(1)}s (P99: ${Number(latencyP99 || 0).toFixed(1)}s) · `
+      : "";
   const mergeHint =
     fragmentCount > sentenceCount
       ? ` · 合并 ${mergeCount} 次（AST ${fragmentCount} 段 → ${sentenceCount} 句）`
       : "";
-  metricsBar.textContent = `已翻译: ${sentenceCount} 句 · 已修正: ${correctionCount} 处 · 记忆: ${memoryCount} 条${mergeHint}`;
+  metricsBar.textContent = `${latencyPart}已翻译: ${sentenceCount} 句 · 已修正: ${correctionCount} 处 · 记忆: ${memoryCount} 条${mergeHint}`;
 }
 
 function renderSummary(payload) {

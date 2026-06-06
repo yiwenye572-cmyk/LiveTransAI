@@ -4,7 +4,8 @@ import re
 
 from backend.config import DeepSeekConfig
 from backend.glossary.prompt_utils import format_context_block, format_glossary_block
-from backend.llm.deepseek_client import chat_completion
+from backend.llm.deepseek_client import ChatCompletionResult, chat_completion
+from backend.utils.session_metrics import SessionMetrics
 from backend.memory.memory_store import MemoryStore
 from backend.state.session_state import SessionState
 from backend.summary.running_summary import RunningSummary
@@ -67,8 +68,9 @@ class CorrectionEngine:
 
         user_content = self._format_prompt(window, summary, state)
         system_prompt = self._build_system_prompt(state)
+        metrics = state.metrics if state is not None else None
         try:
-            raw = await chat_completion(
+            result = await chat_completion(
                 self.config,
                 system=system_prompt,
                 user=user_content,
@@ -76,9 +78,25 @@ class CorrectionEngine:
             )
         except Exception:
             logger.exception("DeepSeek correction API call failed")
+            if metrics is not None:
+                metrics.record_llm_call("correction", latency_ms=0, ok=False)
             return []
 
-        return self._parse_corrections(raw, window)
+        self._record_llm_call(metrics, result)
+        return self._parse_corrections(result.content, window)
+
+    @staticmethod
+    def _record_llm_call(metrics: SessionMetrics | None, result: ChatCompletionResult) -> None:
+        if metrics is None:
+            return
+        metrics.record_llm_call(
+            "correction",
+            latency_ms=result.latency_ms,
+            prompt_tokens=result.prompt_tokens,
+            completion_tokens=result.completion_tokens,
+            total_tokens=result.total_tokens,
+            ok=True,
+        )
 
     def _build_system_prompt(self, state: SessionState | None) -> str:
         source_label = source_language_label(state.source_language if state else "en")

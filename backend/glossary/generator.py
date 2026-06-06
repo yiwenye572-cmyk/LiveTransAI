@@ -8,6 +8,7 @@ from backend.config import DeepSeekConfig
 from backend.glossary.glossary_bundle import GlossaryBundle
 from backend.glossary.hot_words import MAX_HOT_WORDS, derive_hot_words
 from backend.llm.deepseek_client import chat_completion
+from backend.utils.session_metrics import SessionMetrics
 from backend.translator.languages import (
     source_language_label,
     target_language_label,
@@ -69,6 +70,7 @@ class GlossaryGenerator:
         scenario: str,
         instruction: str,
         source_language: str | None = None,
+        metrics: SessionMetrics | None = None,
     ) -> GlossaryBundle:
         if not self.config:
             raise GlossaryError("DeepSeek 未配置，无法生成术语表。请在 .env 中设置 DEEPSEEK_API_KEY。")
@@ -86,7 +88,7 @@ class GlossaryGenerator:
             f"说明：{instruction_text}"
         )
         try:
-            raw = await chat_completion(
+            result = await chat_completion(
                 self.config,
                 system=build_glossary_system_prompt(resolved_language),
                 user=user_content,
@@ -94,10 +96,22 @@ class GlossaryGenerator:
             )
         except Exception as exc:
             logger.exception("Glossary generation API call failed")
+            if metrics is not None:
+                metrics.record_llm_call("glossary", latency_ms=0, ok=False)
             raise GlossaryError("术语表生成失败，请稍后重试。") from exc
 
+        if metrics is not None:
+            metrics.record_llm_call(
+                "glossary",
+                latency_ms=result.latency_ms,
+                prompt_tokens=result.prompt_tokens,
+                completion_tokens=result.completion_tokens,
+                total_tokens=result.total_tokens,
+                ok=True,
+            )
+
         return parse_glossary_response(
-            raw,
+            result.content,
             scenario=scenario_text,
             instruction=instruction_text,
         )

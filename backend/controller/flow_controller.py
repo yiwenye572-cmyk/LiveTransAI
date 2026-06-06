@@ -198,6 +198,16 @@ class FlowController:
         self.state.displayed_sentences.append(dict(merged))
         self.state.sentence_count += 1
 
+        commit_time = time.time()
+        received_at = float(first.get("received_at", commit_time))
+        display_latency_ms = (commit_time - received_at) * 1000.0
+        self.state.metrics.record_display_latency(
+            sentence_id=merged["id"],
+            latency_ms=display_latency_ms,
+            merge_count=fragment_count,
+            wait_ms=waited_ms,
+        )
+
         logger.info(
             "Committed %s: merged %s fragments %s wait=%.0fms words=%s",
             merged["id"],

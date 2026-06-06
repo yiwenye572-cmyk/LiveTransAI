@@ -37,6 +37,7 @@ from backend.translator.languages import (
     target_language_label,
     validate_source_language,
 )
+from backend.utils.session_metrics import SessionMetrics
 
 logger = logging.getLogger(__name__)
 
@@ -143,6 +144,7 @@ class TranslationSession:
         self._source_language: str | None = None
         self._backend_tts = False
         self._tts_enabled: bool | None = None
+        self._pre_session_metrics = SessionMetrics()
 
     def _build_pipeline(
         self,
@@ -162,6 +164,8 @@ class TranslationSession:
         if source_language is not None:
             session_state.source_language = validate_source_language(source_language)
             session_state.target_language = "zh"
+        session_state.metrics.merge_from(self._pre_session_metrics)
+        self._pre_session_metrics = SessionMetrics()
         bus = SubtitleBus()
         correction_engine = CorrectionEngine(load_deepseek_config())
         summary_updater = SummaryUpdater(load_deepseek_config())
@@ -187,6 +191,7 @@ class TranslationSession:
 
     async def _on_summary_update(self, payload: dict) -> None:
         await self.manager.broadcast(payload)
+        await self._broadcast_metrics()
 
     async def _on_formatted_delta(self, payload: dict) -> None:
         await self.manager.broadcast(payload)
@@ -201,20 +206,19 @@ class TranslationSession:
         if self._session_state is None:
             return
         await self.manager.broadcast(self._build_metrics_payload())
+        await self.manager.broadcast(self._build_metrics_detail_payload())
 
     def _build_metrics_payload(self) -> dict:
         assert self._session_state is not None
-        return {
-            "type": "metrics",
-            "sentence_count": self._session_state.sentence_count,
-            "correction_count": self._session_state.correction_count,
-            "merge_count": self._session_state.merge_count,
-            "ast_fragment_count": self._session_state.ast_fragment_count,
-            "memory_count": len(self._session_state.memory_entries),
-            "latency_p50": 0,
-            "latency_p99": 0,
-            "cost_estimate": 0,
-        }
+        payload = self._session_state.metrics.to_payload(self._session_state)
+        payload["type"] = "metrics"
+        return payload
+
+    def _build_metrics_detail_payload(self) -> dict:
+        assert self._session_state is not None
+        payload = self._session_state.metrics.to_detail_payload(self._session_state)
+        payload["type"] = "metrics_detail"
+        return payload
 
     def _build_session_sync(self) -> dict:
         state = self._session_state
@@ -248,8 +252,11 @@ class TranslationSession:
             },
             "metrics": {
                 key: value
-                for key, value in self._build_metrics_payload().items()
-                if key != "type"
+                for key, value in self._session_state.metrics.to_payload(self._session_state).items()
+            },
+            "metrics_detail": {
+                key: value
+                for key, value in self._session_state.metrics.to_detail_payload(self._session_state).items()
             },
         }
 
@@ -576,6 +583,7 @@ def create_app() -> FastAPI:
                 body.scenario,
                 body.instruction,
                 source_language=body.source_language,
+                metrics=session._pre_session_metrics,
             )
         except GlossaryError as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc

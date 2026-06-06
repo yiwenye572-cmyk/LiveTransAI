@@ -1,0 +1,151 @@
+.metrics-app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #0f1115;
+  color: #e8eaed;
+}
+
+.metrics-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 20px 24px;
+  border-bottom: 1px solid #2a2f3a;
+  background: #171a21;
+}
+
+.metrics-header h1 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.metrics-header .subtitle {
+  margin: 4px 0 0;
+  font-size: 0.875rem;
+  color: #9aa0a6;
+}
+
+.metrics-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.metrics-connection {
+  font-size: 0.8125rem;
+  color: #9aa0a6;
+}
+
+.metrics-connection.connected {
+  color: #81c995;
+}
+
+.metrics-link {
+  color: #8ab4f8;
+  text-decoration: none;
+  font-size: 0.875rem;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #3c4043;
+}
+
+.metrics-link:hover {
+  background: #2a2f3a;
+}
+
+.metrics-main {
+  flex: 1;
+  padding: 20px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.metrics-empty {
+  margin: 0;
+  padding: 24px;
+  border-radius: 12px;
+  background: #171a21;
+  border: 1px solid #2a2f3a;
+  color: #9aa0a6;
+}
+
+.metrics-panel {
+  padding: 18px 20px;
+  border-radius: 12px;
+  background: #171a21;
+  border: 1px solid #2a2f3a;
+}
+
+.metrics-section-title {
+  margin: 0 0 14px;
+  font-size: 0.95rem;
+  color: #bdc1c6;
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.metrics-grid-compact {
+  margin-bottom: 14px;
+}
+
+.metrics-stat {
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: #0f1115;
+  border: 1px solid #2a2f3a;
+}
+
+.metrics-stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #9aa0a6;
+  margin-bottom: 4px;
+}
+
+.metrics-stat-value {
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.metrics-table-wrap {
+  overflow-x: auto;
+}
+
+.metrics-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.metrics-table th,
+.metrics-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #2a2f3a;
+}
+
+.metrics-table th {
+  color: #9aa0a6;
+  font-weight: 500;
+}
+
+.metrics-table td {
+  font-variant-numeric: tabular-nums;
+}
+
+.metrics-footnote {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #9aa0a6;
+}
+
+.hidden {
+  display: none !important;
+}
