@@ -13,6 +13,7 @@ from backend.bus.subtitle_bus import SubtitleBus
 from backend.config import ConfigError, load_ast_config, load_deepseek_config
 from backend.controller.flow_controller import FlowController
 from backend.controller.subtitle_mapper import SubtitleMapper
+from backend.controller.tts_mapper import map_tts_event
 from backend.correction.engine import CorrectionEngine
 from backend.glossary import GlossaryBundle, GlossaryError, GlossaryGenerator
 from backend.persist.session_reader import SessionReader
@@ -179,6 +180,19 @@ class TranslationSession:
 
     async def send_initial_state(self, websocket: WebSocket) -> None:
         await websocket.send_json({"type": "status", "state": self.state_label})
+        if self.state_label == "speaking":
+            try:
+                ast_config = load_ast_config()
+                if ast_config.mode == "s2s":
+                    await websocket.send_json(
+                        {
+                            "type": "tts_config",
+                            "format": ast_config.target_audio_format,
+                            "rate": ast_config.target_audio_rate,
+                        }
+                    )
+            except ConfigError:
+                pass
         if self._session_state is not None and self.state_label in {"speaking", "finished"}:
             await websocket.send_json(self._build_session_sync())
 
@@ -214,6 +228,18 @@ class TranslationSession:
                 "updated_at_sentence": 0,
             }
         )
+        try:
+            ast_config = load_ast_config()
+            if ast_config.mode == "s2s":
+                await self.manager.broadcast(
+                    {
+                        "type": "tts_config",
+                        "format": ast_config.target_audio_format,
+                        "rate": ast_config.target_audio_rate,
+                    }
+                )
+        except ConfigError:
+            pass
         self._task = asyncio.create_task(self._run_pipeline())
 
     async def stop(self) -> None:
@@ -259,6 +285,9 @@ class TranslationSession:
                     subtitle = mapper.map_event(event)
                     if subtitle is not None:
                         await flow.on_new_sentence(subtitle)
+                    tts_message = map_tts_event(event, config)
+                    if tts_message is not None:
+                        await self.manager.broadcast(tts_message)
         except AudioCaptureError as exc:
             await self.manager.broadcast({"type": "status", "state": "error", "message": str(exc)})
         except Exception as exc:

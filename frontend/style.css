@@ -347,6 +347,23 @@ h1 {
 .controls {
   display: flex;
   gap: 10px;
+  align-items: center;
+}
+
+.btn-tts {
+  background: #2a2f3a;
+  color: #e8eaed;
+  border: 1px solid #3c4043;
+}
+
+.btn-tts.active {
+  background: #1e3a2f;
+  border-color: #7dcea0;
+  color: #7dcea0;
+}
+
+.btn-tts:disabled {
+  opacity: 0.45;
 }
 
 button {

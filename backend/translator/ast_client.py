@@ -32,6 +32,7 @@ class ASTResponseEvent:
     speaker_changed: bool
     message: str
     data_length: int
+    audio_data: bytes = b""
 
 
 class ASTClient:
@@ -114,6 +115,8 @@ class ASTClient:
         request.request.mode = self.config.mode
         request.request.source_language = self.config.source_language
         request.request.target_language = self.config.target_language
+        if self.config.speaker_id:
+            request.request.speaker_id = self.config.speaker_id
         await self._send_request(ws, request)
 
     async def _send_audio_file(self, ws, session_id: str, audio_file: Path) -> None:
@@ -154,8 +157,8 @@ class ASTClient:
         request.source_audio.channel = self.config.channels
 
         if self.config.mode == "s2s":
-            request.target_audio.format = "ogg_opus"
-            request.target_audio.rate = 24000
+            request.target_audio.format = self.config.target_audio_format
+            request.target_audio.rate = self.config.target_audio_rate
 
         return request
 
@@ -167,6 +170,7 @@ class ASTClient:
         response = TranslateResponse()
         response.ParseFromString(raw)
 
+        audio_data = bytes(response.data) if response.data else b""
         return ASTResponseEvent(
             event=response.event,
             event_name=self._event_name(response.event),
@@ -176,7 +180,8 @@ class ASTClient:
             end_time=response.end_time,
             speaker_changed=response.spk_chg,
             message=response.response_meta.Message,
-            data_length=len(response.data),
+            data_length=len(audio_data),
+            audio_data=audio_data,
         )
 
     @staticmethod

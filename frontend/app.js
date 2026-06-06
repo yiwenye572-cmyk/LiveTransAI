@@ -11,6 +11,7 @@ const formattedMeta = document.getElementById("formatted-meta");
 const formattedContent = document.getElementById("formatted-content");
 const btnStart = document.getElementById("btn-start");
 const btnStop = document.getElementById("btn-stop");
+const btnTts = document.getElementById("btn-tts");
 const btnNewSession = document.getElementById("btn-new-session");
 const btnHistory = document.getElementById("btn-history");
 const btnHistoryClose = document.getElementById("btn-history-close");
@@ -56,6 +57,9 @@ function sendCommand(action) {
 }
 
 function resetUiForFreshSession() {
+  if (window.translationTts) {
+    window.translationTts.stop();
+  }
   subtitleList.innerHTML = "";
   renderEmptySubtitleState();
   renderEmptyFormattedState();
@@ -468,10 +472,38 @@ function connect() {
         markLiveSessionActive();
       } else if (payload.state === "ready" || payload.state === "finished") {
         clearLiveSessionActive();
+        if (window.translationTts) {
+          window.translationTts.stop();
+        }
       }
       if (pendingInitialSync && payload.state === "ready") {
         resetUiForFreshSession();
         pendingInitialSync = false;
+      }
+      return;
+    }
+    if (payload.type === "tts_config") {
+      if (window.translationTts) {
+        window.translationTts.setConfig(payload);
+        updateTtsButton();
+      }
+      return;
+    }
+    if (payload.type === "tts_start") {
+      if (window.translationTts) {
+        window.translationTts.onStart(payload);
+      }
+      return;
+    }
+    if (payload.type === "tts_audio") {
+      if (window.translationTts) {
+        window.translationTts.onAudio(payload);
+      }
+      return;
+    }
+    if (payload.type === "tts_end") {
+      if (window.translationTts) {
+        window.translationTts.onEnd(payload);
       }
       return;
     }
@@ -510,8 +542,38 @@ function connect() {
   });
 }
 
+function updateTtsButton() {
+  if (!btnTts || !window.translationTts) {
+    return;
+  }
+  const player = window.translationTts;
+  const on = player.isEnabled();
+  btnTts.classList.toggle("active", on);
+  btnTts.setAttribute("aria-pressed", on ? "true" : "false");
+  btnTts.textContent = on ? "语音开" : "语音关";
+  if (!player.supported) {
+    btnTts.disabled = true;
+    btnTts.title = "当前浏览器不支持音频播放";
+    return;
+  }
+  if (!player.isAvailable()) {
+    btnTts.title = "等待豆包 s2s 语音流（需 AST_MODE=s2s）";
+  } else {
+    btnTts.title = "播放豆包同声传译中文语音";
+  }
+}
+
 btnStart.addEventListener("click", () => sendCommand("start"));
 btnStop.addEventListener("click", () => sendCommand("stop"));
+if (btnTts) {
+  btnTts.addEventListener("click", () => {
+    if (!window.translationTts) {
+      return;
+    }
+    window.translationTts.toggle();
+    updateTtsButton();
+  });
+}
 btnNewSession.addEventListener("click", () => {
   returnToSetupForNewSession();
 });
@@ -526,4 +588,5 @@ historyOverlay.addEventListener("click", (event) => {
 renderEmptySubtitleState();
 renderEmptyFormattedState();
 resetSummary();
+updateTtsButton();
 connect();

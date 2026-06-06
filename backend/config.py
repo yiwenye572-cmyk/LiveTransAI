@@ -13,9 +13,12 @@ class ASTConfig:
     api_key: str
     resource_id: str = "volc.service_type.10053"
     ws_url: str = "wss://openspeech.bytedance.com/api/v4/ast/v2/translate"
-    mode: str = "s2t"
+    mode: str = "s2s"
     source_language: str = "en"
     target_language: str = "zh"
+    speaker_id: str = ""
+    target_audio_format: str = "ogg_opus"
+    target_audio_rate: int = 24000
     sample_rate: int = 16000
     sample_bits: int = 16
     channels: int = 1
@@ -49,6 +52,9 @@ def load_ast_config() -> ASTConfig:
         mode=os.getenv("AST_MODE", ASTConfig.mode).strip(),
         source_language=os.getenv("SOURCE_LANGUAGE", ASTConfig.source_language).strip(),
         target_language=os.getenv("TARGET_LANGUAGE", ASTConfig.target_language).strip(),
+        speaker_id=os.getenv("AST_SPEAKER_ID", ASTConfig.speaker_id).strip(),
+        target_audio_format=os.getenv("AST_TARGET_AUDIO_FORMAT", ASTConfig.target_audio_format).strip(),
+        target_audio_rate=int(os.getenv("AST_TARGET_AUDIO_RATE", str(ASTConfig.target_audio_rate))),
     )
 
 
