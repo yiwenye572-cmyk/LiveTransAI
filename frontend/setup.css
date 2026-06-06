@@ -133,6 +133,19 @@
   align-content: flex-start;
 }
 
+.setup-input:read-only {
+  opacity: 0.85;
+  cursor: default;
+}
+
+.setup-view-only .setup-form-panel .setup-label {
+  color: #bdc1c6;
+}
+
+.setup-main-view {
+  grid-template-columns: minmax(280px, 40%) 1fr;
+}
+
 @media (max-width: 900px) {
   .setup-main {
     grid-template-columns: 1fr;

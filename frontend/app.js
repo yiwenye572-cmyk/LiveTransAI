@@ -9,10 +9,9 @@ const summaryTerms = document.getElementById("summary-terms");
 const summaryBullets = document.getElementById("summary-bullets");
 const formattedMeta = document.getElementById("formatted-meta");
 const formattedContent = document.getElementById("formatted-content");
-const glossaryLoadedMeta = document.getElementById("glossary-loaded-meta");
-const glossaryLoadedTerms = document.getElementById("glossary-loaded-terms");
 const btnStart = document.getElementById("btn-start");
 const btnStop = document.getElementById("btn-stop");
+const btnNewSession = document.getElementById("btn-new-session");
 const btnHistory = document.getElementById("btn-history");
 const btnHistoryClose = document.getElementById("btn-history-close");
 const historyOverlay = document.getElementById("history-overlay");
@@ -26,6 +25,7 @@ let sentenceCount = 0;
 let correctionCount = 0;
 let memoryCount = 0;
 let formattedSentenceCount = 0;
+let pendingInitialSync = true;
 
 const STATUS_LABELS = {
   ready: "就绪",
@@ -55,19 +55,47 @@ function sendCommand(action) {
   socket.send(JSON.stringify(payload));
 }
 
-function applyLoadedGlossaryToUi() {
-  const stored = loadStoredGlossary();
-  if (!stored || !stored.term_map || Object.keys(stored.term_map).length === 0) {
-    glossaryLoadedMeta.textContent = "未加载术语表，可在配置页生成";
-    renderTermMap(glossaryLoadedTerms, {});
-    return;
+function resetUiForFreshSession() {
+  subtitleList.innerHTML = "";
+  renderEmptySubtitleState();
+  renderEmptyFormattedState();
+  resetSummary();
+  sentenceCount = 0;
+  correctionCount = 0;
+  memoryCount = 0;
+}
+
+function restoreSessionSync(payload) {
+  subtitleList.innerHTML = "";
+  const subtitles = payload.subtitles || [];
+  if (subtitles.length === 0) {
+    renderEmptySubtitleState();
+  } else {
+    for (const item of subtitles) {
+      appendSubtitle(item);
+    }
   }
-  const count = Object.keys(stored.term_map).length;
-  const scenario = (stored.scenario || "").trim();
-  glossaryLoadedMeta.textContent = scenario
-    ? `${scenario} · ${count} 条术语`
-    : `已加载 ${count} 条术语`;
-  renderTermMap(glossaryLoadedTerms, stored.term_map);
+
+  if (payload.summary) {
+    renderSummary(payload.summary);
+  }
+
+  if (payload.formatted) {
+    renderFormattedSnapshot({
+      paragraphs: payload.formatted.paragraphs || [],
+      updated_at_sentence: payload.formatted.updated_at_sentence || 0,
+    });
+  } else {
+    renderEmptyFormattedState();
+  }
+
+  if (payload.metrics) {
+    updateMetrics(payload.metrics);
+  }
+
+  if (payload.status) {
+    setStatus(payload.status);
+  }
 }
 
 function renderEmptySubtitleState() {
@@ -275,6 +303,17 @@ function closeHistoryPanel() {
   historyOverlay.setAttribute("aria-hidden", "true");
 }
 
+async function returnToSetupForNewSession() {
+  btnNewSession.disabled = true;
+  try {
+    await fetch("/api/session/stop", { method: "POST" });
+  } catch {
+    sendCommand("stop");
+  }
+  clearLiveSessionActive();
+  window.location.href = "/setup.html";
+}
+
 async function loadHistoryList() {
   historyList.innerHTML = '<div class="empty-state">加载中…</div>';
   try {
@@ -410,17 +449,30 @@ function renderHistoryDetail(payload) {
 
 function connect() {
   socket = new WebSocket(WS_URL);
+  pendingInitialSync = true;
 
   socket.addEventListener("open", () => {
-    setStatus("ready");
-    renderEmptySubtitleState();
-    renderEmptyFormattedState();
+    pendingInitialSync = true;
   });
 
   socket.addEventListener("message", (event) => {
     const payload = JSON.parse(event.data);
+    if (payload.type === "session_sync") {
+      restoreSessionSync(payload);
+      pendingInitialSync = false;
+      return;
+    }
     if (payload.type === "status") {
       setStatus(payload.state, payload.message);
+      if (payload.state === "speaking") {
+        markLiveSessionActive();
+      } else if (payload.state === "ready" || payload.state === "finished") {
+        clearLiveSessionActive();
+      }
+      if (pendingInitialSync && payload.state === "ready") {
+        resetUiForFreshSession();
+        pendingInitialSync = false;
+      }
       return;
     }
     if (payload.type === "subtitle") {
@@ -460,6 +512,9 @@ function connect() {
 
 btnStart.addEventListener("click", () => sendCommand("start"));
 btnStop.addEventListener("click", () => sendCommand("stop"));
+btnNewSession.addEventListener("click", () => {
+  returnToSetupForNewSession();
+});
 btnHistory.addEventListener("click", openHistoryPanel);
 btnHistoryClose.addEventListener("click", closeHistoryPanel);
 historyOverlay.addEventListener("click", (event) => {
@@ -471,5 +526,4 @@ historyOverlay.addEventListener("click", (event) => {
 renderEmptySubtitleState();
 renderEmptyFormattedState();
 resetSummary();
-applyLoadedGlossaryToUi();
 connect();

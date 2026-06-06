@@ -124,19 +124,63 @@ class TranslationSession:
     async def _broadcast_metrics(self) -> None:
         if self._session_state is None:
             return
-        await self.manager.broadcast(
-            {
-                "type": "metrics",
-                "sentence_count": self._session_state.sentence_count,
-                "correction_count": self._session_state.correction_count,
-                "merge_count": self._session_state.merge_count,
-                "ast_fragment_count": self._session_state.ast_fragment_count,
-                "memory_count": len(self._session_state.memory_entries),
-                "latency_p50": 0,
-                "latency_p99": 0,
-                "cost_estimate": 0,
-            }
-        )
+        await self.manager.broadcast(self._build_metrics_payload())
+
+    def _build_metrics_payload(self) -> dict:
+        assert self._session_state is not None
+        return {
+            "type": "metrics",
+            "sentence_count": self._session_state.sentence_count,
+            "correction_count": self._session_state.correction_count,
+            "merge_count": self._session_state.merge_count,
+            "ast_fragment_count": self._session_state.ast_fragment_count,
+            "memory_count": len(self._session_state.memory_entries),
+            "latency_p50": 0,
+            "latency_p99": 0,
+            "cost_estimate": 0,
+        }
+
+    def _build_session_sync(self) -> dict:
+        state = self._session_state
+        if state is None:
+            return {"type": "session_sync", "status": self.state_label}
+
+        subtitles = []
+        for item in state.displayed_sentences:
+            version = int(item.get("version", 1))
+            subtitles.append(
+                {
+                    "type": "subtitle",
+                    "id": item.get("id", ""),
+                    "version": version,
+                    "source": item.get("source", ""),
+                    "translation": item.get("translation", ""),
+                    "confidence": "corrected" if version > 1 else "fast",
+                }
+            )
+
+        return {
+            "type": "session_sync",
+            "status": self.state_label,
+            "subtitles": subtitles,
+            "summary": state.running_summary.to_ws_payload(
+                sentence_count=state.sentence_count
+            ),
+            "formatted": {
+                "paragraphs": state.formatted_doc.build_snapshot(),
+                "updated_at_sentence": state.sentence_count,
+            },
+            "metrics": {
+                key: value
+                for key, value in self._build_metrics_payload().items()
+                if key != "type"
+            },
+        }
+
+    async def send_initial_state(self, websocket: WebSocket) -> None:
+        await websocket.send_json({"type": "status", "state": self.state_label})
+        if self._session_state is not None and self.state_label in {"speaking", "finished"}:
+            await websocket.send_json(self._build_session_sync())
 
     async def handle_command(self, action: str, glossary: dict | None = None) -> None:
         if action == "start":
@@ -254,6 +298,11 @@ def create_app() -> FastAPI:
         session._pending_glossary = bundle
         return bundle.to_api_dict()
 
+    @app.post("/api/session/stop")
+    async def stop_session() -> dict:
+        await session.stop()
+        return {"ok": True}
+
     @app.get("/api/sessions")
     async def list_sessions() -> dict:
         return {"sessions": SessionReader.list_sessions()}
@@ -268,7 +317,7 @@ def create_app() -> FastAPI:
     @app.websocket("/stream")
     async def stream(websocket: WebSocket) -> None:
         await manager.connect(websocket)
-        await websocket.send_json({"type": "status", "state": session.state_label})
+        await session.send_initial_state(websocket)
         try:
             while True:
                 payload = await websocket.receive_json()
@@ -280,7 +329,7 @@ def create_app() -> FastAPI:
                     await session.handle_command(action, glossary=glossary)
         except WebSocketDisconnect:
             manager.disconnect(websocket)
-            if not manager.connections:
+            if not manager.connections and session.state_label == "ready":
                 await session.stop()
 
     app.mount("/", StaticFiles(directory=str(FRONTEND_DIR), html=True), name="frontend")
