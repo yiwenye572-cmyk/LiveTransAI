@@ -1,13 +1,14 @@
 import asyncio
+import logging
 import sys
 import uuid
-from dataclasses import dataclass
 from pathlib import Path
 from typing import AsyncIterator
 
 import websockets
 
 from backend.config import ASTConfig
+from backend.translator.ast_corpus import AstCorpus
 
 
 PROTO_ROOT = Path(__file__).resolve().parent / "ast_protos"
@@ -19,6 +20,8 @@ from python_protogen.products.understanding.ast.ast_service_pb2 import (  # noqa
     TranslateRequest,
     TranslateResponse,
 )
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -37,8 +40,9 @@ class ASTResponseEvent:
 class ASTClient:
     """Minimal Doubao AST WebSocket client used by the first smoke test."""
 
-    def __init__(self, config: ASTConfig):
+    def __init__(self, config: ASTConfig, corpus: AstCorpus | None = None):
         self.config = config
+        self.corpus = corpus
 
     async def translate_file(self, audio_path: Path | str) -> AsyncIterator[ASTResponseEvent]:
         audio_file = Path(audio_path)
@@ -114,6 +118,16 @@ class ASTClient:
         request.request.mode = self.config.mode
         request.request.source_language = self.config.source_language
         request.request.target_language = self.config.target_language
+        if self.corpus is not None and not self.corpus.is_empty:
+            corpus = request.request.corpus
+            corpus.hot_words_list.extend(self.corpus.hot_words)
+            for source, target in self.corpus.glossary.items():
+                corpus.glossary_list[source] = target
+            logger.info(
+                "AST StartSession corpus: hot_words=%s glossary=%s",
+                len(self.corpus.hot_words),
+                len(self.corpus.glossary),
+            )
         await self._send_request(ws, request)
 
     async def _send_audio_file(self, ws, session_id: str, audio_file: Path) -> None:

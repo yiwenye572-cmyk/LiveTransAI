@@ -67,6 +67,21 @@ class ParseGlossaryResponseTests(unittest.TestCase):
             )
 
 
+    def test_filters_invalid_hot_words_from_llm_response(self) -> None:
+        raw = """
+        {
+          "glossary_list": {"GPU": "图形处理器"},
+          "hot_words_list": ["GPU", "not-in-glossary"]
+        }
+        """
+        bundle = parse_glossary_response(
+            raw,
+            scenario="硬件",
+            instruction="简洁",
+        )
+        self.assertEqual(bundle.hot_words_list, ["GPU"])
+
+
 class GlossaryBundleTests(unittest.TestCase):
     def test_from_client_payload_uses_term_map(self) -> None:
         payload = {

@@ -20,6 +20,7 @@ from backend.persist.session_writer import SessionWriter
 from backend.state.session_state import SessionPhase, SessionState
 from backend.summary.updater import SummaryUpdater
 from backend.translator.ast_client import ASTClient
+from backend.translator.ast_corpus import AstCorpus
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ def apply_glossary_to_state(state: SessionState, bundle: GlossaryBundle | None) 
     state.context_instruction = bundle.instruction
     state.tone_hint = bundle.tone_hint
     state.static_glossary = dict(bundle.glossary_list)
+    state.hot_words_list = list(bundle.hot_words_list)
 
 
 class ConnectionManager:
@@ -237,6 +239,17 @@ class TranslationSession:
         self._flow = None
         await self.manager.broadcast({"type": "status", "state": "ready"})
 
+    def _build_ast_corpus(self) -> AstCorpus | None:
+        state = self._session_state
+        if state is None:
+            return None
+        if not state.hot_words_list and not state.static_glossary:
+            return None
+        return AstCorpus(
+            hot_words=list(state.hot_words_list),
+            glossary=dict(state.static_glossary),
+        )
+
     async def _run_pipeline(self) -> None:
         flow = self._flow
         if flow is None:
@@ -248,7 +261,7 @@ class TranslationSession:
             self.state_label = "ready"
             return
 
-        client = ASTClient(config)
+        client = ASTClient(config, corpus=self._build_ast_corpus())
         mapper = self._mapper
         assert mapper is not None
 

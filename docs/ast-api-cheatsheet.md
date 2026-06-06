@@ -115,10 +115,18 @@ Client                                    AST Server
   "request": {
     "mode": "s2t",
     "source_language": "en",
-    "target_language": "zh"
+    "target_language": "zh",
+    "corpus": {
+      "hot_words_list": ["federated learning", "GPU"],
+      "glossary_list": {
+        "federated learning": "联邦学习"
+      }
+    }
   }
 }
 ```
+
+When a glossary bundle is loaded from setup, LiveTransAI injects the same bundle into `corpus` at StartSession: `hot_words_list` for source recognition and `glossary_list` for AST translation hints. Correction still uses the same terms via DeepSeek prompts.
 
 S2S 额外需要 `target_audio`（如 `format: pcm`, `rate: 24000`）及可选 `speaker_id`。
 
@@ -282,7 +290,9 @@ SubtitleMapper → JSON
 | 文件 | 说明 |
 |------|------|
 | `backend/config.py` | AST 环境变量与音频分包参数 |
-| `backend/translator/ast_client.py` | Protobuf WebSocket 客户端 |
+| `backend/translator/ast_client.py` | Protobuf WebSocket 客户端（StartSession 注入 corpus） |
+| `backend/translator/ast_corpus.py` | AST 热词/术语 corpus 数据结构 |
+| `backend/glossary/hot_words.py` | 从术语表派生 hot_words_list |
 | `backend/controller/subtitle_mapper.py` | AST 事件 → 前端 JSON |
 | `backend/audio/capture.py` | 系统音频 loopback |
 | `backend/server/ws_server.py` | 本地 WebSocket 服务 |
@@ -295,9 +305,9 @@ s2s 模式
 语音→语音，会返回 TTS 音频（350/352/351）
 speaker_id
 S2S 公版音色
-corpus / 热词 / 术语表
-提升专有名词翻译
 UpdateConfig (201)
 会话中更新热词，不能切换语言
 spk_chg
 说话人切换检测
+
+**已接入：** setup 页生成的术语 bundle 在 StartSession 时写入 `corpus.hot_words_list` 与 `corpus.glossary_list`（见 [`backend/translator/ast_client.py`](../backend/translator/ast_client.py)）。
