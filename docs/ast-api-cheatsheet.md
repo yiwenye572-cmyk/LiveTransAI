@@ -255,6 +255,45 @@ TranslationSubtitleEnd:        "大家好，今天我想谈谈AI"
 { "type": "command", "action": "stop" }
 ```
 
+`start` 可附带会话配置（来自 `/setup.html` 的 sessionStorage）：
+
+```json
+{
+  "type": "command",
+  "action": "start",
+  "source_language": "ja",
+  "audio": {
+    "loopback_index": -100,
+    "tts_output_id": "{speaker-id}"
+  },
+  "tts_enabled": true,
+  "glossary": {
+    "scenario": "...",
+    "instruction": "...",
+    "term_map": { "GPU": "图形处理器" }
+  }
+}
+```
+
+- `source_language`：S2S 源语言（`en` / `ja` / `pt` / `es` / `id` / `de` / `fr`）；目标语言固定 `zh`
+- 后端广播 `language_route`：`{ source: {code, label}, target: {code:"zh", label:"中文"} }`
+
+### 语言列表 API
+
+```http
+GET /api/languages
+```
+
+```json
+{
+  "sources": [{ "code": "en", "label": "英语" }],
+  "target": { "code": "zh", "label": "中文" },
+  "default_source": "en"
+}
+```
+
+`.env` 中 `SOURCE_LANGUAGE` 仅为默认值；配置页选择会覆盖。
+
 前端**不上传音频**；音频由本地后端 loopback 采集后直连豆包 AST。
 
 ---

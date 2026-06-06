@@ -8,20 +8,25 @@ from backend.llm.deepseek_client import chat_completion
 from backend.memory.memory_store import MemoryStore
 from backend.state.session_state import SessionState
 from backend.summary.running_summary import RunningSummary
+from backend.translator.languages import source_language_label, target_language_label
 
 logger = logging.getLogger(__name__)
 
-SYSTEM_PROMPT = """你是同声传译的校对专家。你会收到：
+CONFIDENCE_THRESHOLD = 0.85
+
+
+def build_correction_system_prompt(source_label: str, target_label: str) -> str:
+    return f"""你是同声传译的校对专家。你会收到：
 1. 【会话摘要】：本场演讲的主题、术语和要点
-2. 【待校对段落】：最近若干句英文原文及中文快速翻译
+2. 【待校对段落】：最近若干句{source_label}原文及{target_label}快速翻译
 
 请结合会话摘要理解指代、术语和上下文，但只修正【待校对段落】中的句子。
 只修正确实有问题的句子，不要润色已经正确的翻译。修正应尽可能小，不要整句重写。
 
 以 JSON 输出，格式如下：
-{
+{{
   "corrections": [
-    {
+    {{
       "sentence_id": "s_001",
       "base_version": 1,
       "new_version": 2,
@@ -29,13 +34,11 @@ SYSTEM_PROMPT = """你是同声传译的校对专家。你会收到：
       "new": "修正后的翻译",
       "reason": "修正原因",
       "confidence": 0.92
-    }
+    }}
   ]
-}
+}}
 
-若无必要修正，返回 {"corrections": []}。只输出 JSON，不要 markdown。"""
-
-CONFIDENCE_THRESHOLD = 0.85
+若无必要修正，返回 {{"corrections": []}}。只输出 JSON，不要 markdown。"""
 
 
 class CorrectionEngine:
@@ -73,11 +76,14 @@ class CorrectionEngine:
         return self._parse_corrections(raw, window)
 
     def _build_system_prompt(self, state: SessionState | None) -> str:
+        source_label = source_language_label(state.source_language if state else "en")
+        target_label = target_language_label()
+        system_prompt = build_correction_system_prompt(source_label, target_label)
         if state is None or not state.static_glossary:
-            return SYSTEM_PROMPT
+            return system_prompt
 
         lines = [
-            SYSTEM_PROMPT,
+            system_prompt,
             "",
             "【业务场景】",
             format_context_block(state.context_scenario, state.tone_hint),
@@ -92,12 +98,14 @@ class CorrectionEngine:
         summary: RunningSummary,
         state: SessionState | None = None,
     ) -> str:
+        source_tag = (state.source_language if state else "en").upper()
+        target_tag = (state.target_language if state else "zh").upper()
         focus_lines = []
         for item in window:
             focus_lines.append(
                 f'{item["id"]} (v{item.get("version", 1)})\n'
-                f'EN: {item.get("source", "")}\n'
-                f'ZH: {item.get("translation", "")}'
+                f'{source_tag}: {item.get("source", "")}\n'
+                f'{target_tag}: {item.get("translation", "")}'
             )
 
         blocks = [

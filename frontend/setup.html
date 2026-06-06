@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>术语表配置 · LiveTransAI</title>
+    <title>会话配置 · LiveTransAI</title>
     <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/setup.css" />
   </head>
@@ -11,14 +11,28 @@
     <div class="setup-app">
       <header class="setup-header">
         <div>
-          <h1>术语表配置</h1>
-          <p class="subtitle">描述业务场景，由 AI 生成英中术语表，再进入同声传译</p>
+          <h1>会话配置</h1>
+          <p class="subtitle">配置源语言与可选术语表，再进入同声传译</p>
         </div>
         <a id="setup-header-action" class="setup-link" href="/">跳过，直接进入同传</a>
       </header>
 
       <main id="setup-main" class="setup-main">
         <section id="setup-form-panel" class="setup-form-panel">
+          <div class="setup-language-panel">
+            <h2 class="setup-section-title">翻译语言</h2>
+            <div class="setup-language-row">
+              <label class="setup-label" for="source-language-select">源语言</label>
+              <select id="source-language-select" class="setup-input setup-select"></select>
+            </div>
+            <div class="setup-language-row">
+              <span class="setup-label">目标语言</span>
+              <div id="target-language-label" class="setup-target-language">中文</div>
+            </div>
+            <p class="setup-language-hint">术语 AI 生成目前主要优化英语场景。</p>
+          </div>
+
+          <h2 class="setup-section-title">术语表（可选）</h2>
           <label class="setup-label" for="glossary-scenario">业务场景</label>
           <input
             id="glossary-scenario"
@@ -41,7 +55,7 @@
             <button id="btn-generate-glossary" type="button">生成术语表</button>
             <a id="btn-enter-live" class="setup-enter" href="/">进入同传</a>
           </div>
-          <p id="setup-status" class="setup-status">填写场景与说明后点击生成（可选，不生成也可同传）</p>
+          <p id="setup-status" class="setup-status">选择源语言后可进入同传；术语表为可选项</p>
         </section>
 
         <section class="setup-preview-panel">

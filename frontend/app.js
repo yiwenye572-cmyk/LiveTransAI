@@ -1,6 +1,7 @@
 const WS_URL = `ws://${window.location.hostname}:8765/stream`;
 
 const statusBadge = document.getElementById("status-badge");
+const appSubtitle = document.getElementById("app-subtitle");
 const subtitleList = document.getElementById("subtitle-list");
 const metricsBar = document.getElementById("metrics-bar");
 const summaryMeta = document.getElementById("summary-meta");
@@ -45,6 +46,37 @@ const STATUS_LABELS = {
   error: "错误",
 };
 
+const DEFAULT_APP_SUBTITLE = "AI 同声传译助手";
+
+function renderLanguageRoute(payload) {
+  if (!appSubtitle) {
+    return;
+  }
+  if (!payload?.source?.label || !payload?.target?.label) {
+    appSubtitle.textContent = DEFAULT_APP_SUBTITLE;
+    return;
+  }
+  appSubtitle.textContent = `${DEFAULT_APP_SUBTITLE} · ${payload.source.label} → ${payload.target.label}`;
+}
+
+function renderStoredLanguageHint() {
+  const stored = loadSessionConfig();
+  if (!stored?.source_language || !appSubtitle) {
+    return;
+  }
+  const labels = {
+    en: "英语",
+    ja: "日语",
+    pt: "葡萄牙语",
+    es: "西班牙语",
+    id: "印尼语",
+    de: "德语",
+    fr: "法语",
+  };
+  const sourceLabel = labels[stored.source_language] || stored.source_language;
+  appSubtitle.textContent = `${DEFAULT_APP_SUBTITLE} · ${sourceLabel} → 中文`;
+}
+
 function setStatus(state, message) {
   statusBadge.className = `status-badge status-${state}`;
   statusBadge.textContent = message || STATUS_LABELS[state] || state;
@@ -74,6 +106,7 @@ function sendCommand(action) {
     if (window.translationTts) {
       payload.tts_enabled = window.translationTts.isEnabled();
     }
+    payload.source_language = getStoredSourceLanguage();
   }
   socket.send(JSON.stringify(payload));
 }
@@ -641,6 +674,10 @@ function connect() {
       setAudioRouteEditing(false);
       return;
     }
+    if (payload.type === "language_route") {
+      renderLanguageRoute(payload);
+      return;
+    }
     if (payload.type === "tts_start") {
       if (window.translationTts) {
         window.translationTts.onStart(payload);
@@ -753,6 +790,7 @@ renderEmptyFormattedState();
 resetSummary();
 updateTtsButton();
 setAudioRouteEditing(true);
+renderStoredLanguageHint();
 loadAudioDevices();
 if (window.translationTts) {
   window.translationTts.setCaptureControl(sendCaptureSuppress);
