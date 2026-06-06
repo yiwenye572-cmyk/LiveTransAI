@@ -1,9 +1,19 @@
+html.metrics-page,
+html.metrics-page body {
+  overflow-x: hidden;
+  overflow-y: auto;
+  height: auto;
+  min-height: 100%;
+}
+
 .metrics-app {
   min-height: 100vh;
+  height: auto;
   display: flex;
   flex-direction: column;
   background: #0f1115;
   color: #e8eaed;
+  overflow: visible;
 }
 
 .metrics-header {
@@ -14,6 +24,7 @@
   padding: 20px 24px;
   border-bottom: 1px solid #2a2f3a;
   background: #171a21;
+  flex-shrink: 0;
 }
 
 .metrics-header h1 {
@@ -56,11 +67,12 @@
 }
 
 .metrics-main {
-  flex: 1;
+  flex: 1 0 auto;
   padding: 20px 24px 32px;
   display: flex;
   flex-direction: column;
   gap: 16px;
+  overflow: visible;
 }
 
 .metrics-empty {
@@ -77,6 +89,7 @@
   border-radius: 12px;
   background: #171a21;
   border: 1px solid #2a2f3a;
+  flex-shrink: 0;
 }
 
 .metrics-section-title {
@@ -91,8 +104,28 @@
   gap: 12px;
 }
 
-.metrics-grid-compact {
+.metrics-latency-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
   margin-bottom: 14px;
+}
+
+.metrics-latency-stat {
+  width: 148px;
+  min-width: 148px;
+  max-width: 148px;
+  height: 76px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.metrics-latency-stat .metrics-stat-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .metrics-stat {
@@ -115,7 +148,12 @@
 }
 
 .metrics-table-wrap {
+  max-height: 220px;
+  overflow-y: auto;
   overflow-x: auto;
+  border: 1px solid #2a2f3a;
+  border-radius: 8px;
+  background: #0f1115;
 }
 
 .metrics-table {
@@ -131,19 +169,28 @@
   border-bottom: 1px solid #2a2f3a;
 }
 
-.metrics-table th {
+.metrics-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
   color: #9aa0a6;
   font-weight: 500;
+  background: #171a21;
 }
 
 .metrics-table td {
   font-variant-numeric: tabular-nums;
 }
 
+.metrics-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .metrics-footnote {
   margin: 0;
   font-size: 0.8125rem;
   color: #9aa0a6;
+  flex-shrink: 0;
 }
 
 .hidden {

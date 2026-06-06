@@ -122,11 +122,8 @@ function renderMetricsDetail(detail, status) {
   document.getElementById("metric-elapsed").textContent = formatDuration(latestDetail.session_elapsed_sec);
   document.getElementById("metric-language").textContent =
     `${languageLabel(latestDetail.source_language)} → ${languageLabel(latestDetail.target_language || "zh")}`;
-  document.getElementById("metric-sentences").textContent = latestDetail.sentence_count ?? 0;
-  document.getElementById("metric-merges").textContent = latestDetail.merge_count ?? 0;
   document.getElementById("metric-fragments").textContent = latestDetail.ast_fragment_count ?? 0;
   document.getElementById("metric-corrections").textContent = latestDetail.correction_count ?? 0;
-  document.getElementById("metric-memory").textContent = latestDetail.memory_count ?? 0;
 
   document.getElementById("metric-latency-p50").textContent = formatSeconds(latestDetail.latency_p50);
   document.getElementById("metric-latency-p99").textContent = formatSeconds(latestDetail.latency_p99);

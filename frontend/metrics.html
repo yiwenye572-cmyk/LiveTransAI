@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="metrics-page">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -39,14 +39,6 @@
               <span id="metric-language" class="metrics-stat-value">—</span>
             </div>
             <div class="metrics-stat">
-              <span class="metrics-stat-label">已上屏句数</span>
-              <span id="metric-sentences" class="metrics-stat-value">0</span>
-            </div>
-            <div class="metrics-stat">
-              <span class="metrics-stat-label">合并次数</span>
-              <span id="metric-merges" class="metrics-stat-value">0</span>
-            </div>
-            <div class="metrics-stat">
               <span class="metrics-stat-label">AST 片段</span>
               <span id="metric-fragments" class="metrics-stat-value">0</span>
             </div>
@@ -54,21 +46,17 @@
               <span class="metrics-stat-label">修正次数</span>
               <span id="metric-corrections" class="metrics-stat-value">0</span>
             </div>
-            <div class="metrics-stat">
-              <span class="metrics-stat-label">记忆条目</span>
-              <span id="metric-memory" class="metrics-stat-value">0</span>
-            </div>
           </div>
         </section>
 
         <section id="metrics-latency-panel" class="metrics-panel hidden">
           <h2 class="metrics-section-title">上屏延迟（A）</h2>
-          <div class="metrics-grid metrics-grid-compact">
-            <div class="metrics-stat">
+          <div class="metrics-latency-cards">
+            <div class="metrics-stat metrics-latency-stat">
               <span class="metrics-stat-label">P50</span>
               <span id="metric-latency-p50" class="metrics-stat-value">—</span>
             </div>
-            <div class="metrics-stat">
+            <div class="metrics-stat metrics-latency-stat">
               <span class="metrics-stat-label">P99</span>
               <span id="metric-latency-p99" class="metrics-stat-value">—</span>
             </div>
