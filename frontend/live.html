@@ -55,6 +55,15 @@
           <div class="subtitle-panel-toolbar">
             <div class="subtitle-panel-toolbar-actions">
               <button
+                id="btn-focus-summary"
+                type="button"
+                class="btn-focus-summary hidden"
+                aria-expanded="false"
+                title="展开/收起会话摘要"
+              >
+                摘要 ▾
+              </button>
+              <button
                 id="btn-subtitle-settings"
                 type="button"
                 class="btn-subtitle-settings hidden"
@@ -74,6 +83,19 @@
             </div>
           </div>
           <div id="subtitle-metrics-bar" class="subtitle-metrics-bar hidden">已翻译: 0 句</div>
+          <section id="focus-summary-drawer" class="focus-summary-drawer" aria-hidden="true">
+            <div class="focus-summary-drawer-inner summary-panel panel-accent-summary">
+              <div class="summary-header">
+                <h2>会话摘要</h2>
+                <span id="focus-summary-meta" class="summary-meta">会话主题将在翻译开始后自动生成</span>
+              </div>
+              <div id="focus-summary-topic" class="summary-topic">主题：—</div>
+              <div class="summary-scroll">
+                <div id="focus-summary-terms" class="summary-terms"></div>
+                <ul id="focus-summary-bullets" class="summary-bullets"></ul>
+              </div>
+            </div>
+          </section>
           <div id="subtitle-list" class="subtitle-list"></div>
         </section>
       </main>

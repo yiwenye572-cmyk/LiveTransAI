@@ -451,7 +451,8 @@ h1 {
 }
 
 .btn-subtitle-focus,
-.btn-subtitle-settings {
+.btn-subtitle-settings,
+.btn-focus-summary {
   padding: 6px 12px;
   font-size: 0.8rem;
   background: transparent;
@@ -461,13 +462,61 @@ h1 {
 }
 
 .btn-subtitle-focus:hover,
-.btn-subtitle-settings:hover {
+.btn-subtitle-settings:hover,
+.btn-focus-summary:hover {
   background: #2a2f3a;
 }
 
 .btn-subtitle-focus[aria-pressed="true"] {
   background: rgba(138, 180, 248, 0.12);
   border-color: #8ab4f8;
+}
+
+.btn-focus-summary[aria-expanded="true"] {
+  background: rgba(138, 180, 248, 0.12);
+  border-color: #8ab4f8;
+}
+
+.focus-summary-drawer {
+  flex-shrink: 0;
+  max-height: 0;
+  overflow: hidden;
+  transition:
+    max-height 240ms ease,
+    border-color 240ms ease;
+  border-bottom: 1px solid transparent;
+}
+
+.app.subtitle-focus-mode.focus-summary-open .focus-summary-drawer {
+  max-height: 20vh;
+  border-bottom-color: #2a2f3a;
+}
+
+.focus-summary-drawer-inner {
+  max-height: 20vh;
+  overflow: hidden;
+  padding: 10px 16px;
+  background: #0a0a0a;
+  border-radius: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.focus-summary-drawer-inner .summary-header h2 {
+  font-size: 0.9rem;
+}
+
+.focus-summary-drawer-inner .summary-header,
+.focus-summary-drawer-inner .summary-topic {
+  flex-shrink: 0;
+}
+
+.focus-summary-drawer-inner .summary-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .subtitle-settings-overlay {
