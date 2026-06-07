@@ -42,9 +42,11 @@ class SessionWriterTests(unittest.TestCase):
         state.displayed_sentences = [
             {
                 "id": "d_001",
-                "version": 1,
+                "version": 2,
                 "source": "We discuss new energy project",
                 "translation": "我们讨论新能源项目",
+                "old_translation": "我们讨论新能量项目",
+                "reason": "术语统一",
             }
         ]
         state.formatted_doc.slots = []
@@ -111,6 +113,11 @@ class SessionWriterTests(unittest.TestCase):
 
         detail = json.loads((state.session_dir / "session-detail.json").read_text(encoding="utf-8"))
         self.assertEqual(len(detail["sentences"]), 1)
+        sentence = detail["sentences"][0]
+        self.assertEqual(sentence["version"], 2)
+        self.assertEqual(sentence["old_translation"], "我们讨论新能量项目")
+        self.assertEqual(sentence["reason"], "术语统一")
+        self.assertEqual(sentence["confidence"], "corrected")
         self.assertEqual(state.phase, SessionPhase.STOPPED)
 
     def test_write_session_state_empty(self) -> None:
@@ -182,6 +189,52 @@ class SessionReaderTests(unittest.TestCase):
 
     def test_get_session_missing(self) -> None:
         self.assertIsNone(SessionReader.get_session("missing"))
+
+    def test_get_session_merges_corrections_jsonl(self) -> None:
+        session_dir = SessionWriter.ensure_session_dir("legacy", started_at=1000.0)
+        detail_payload = {
+            "session_id": "legacy",
+            "started_at": 1000.0,
+            "stopped_at": 1001.0,
+            "sentence_count": 1,
+            "correction_count": 1,
+            "summary": {"topic": "", "term_map": {}, "bullet_points": []},
+            "formatted_paragraphs": [],
+            "sentences": [
+                {
+                    "id": "d_001",
+                    "version": 1,
+                    "source": "Hello",
+                    "translation": "你好",
+                }
+            ],
+            "memory_entries": [],
+        }
+        SessionWriter._write_json(session_dir / "session-detail.json", detail_payload)
+        SessionWriter._write_json(
+            session_dir / "meta.json",
+            SessionWriter.build_meta(detail_payload),
+        )
+        SessionWriter.append_correction(
+            session_dir,
+            {
+                "sentence_id": "d_001",
+                "base_version": 1,
+                "new_version": 2,
+                "old_translation": "您好",
+                "new_translation": "你好呀",
+                "reason": "语气调整",
+            },
+        )
+
+        detail = SessionReader.get_session("legacy")
+        assert detail is not None
+        sentence = detail["sentences"][0]
+        self.assertEqual(sentence["version"], 2)
+        self.assertEqual(sentence["translation"], "你好呀")
+        self.assertEqual(sentence["old_translation"], "您好")
+        self.assertEqual(sentence["reason"], "语气调整")
+        self.assertEqual(sentence["confidence"], "corrected")
 
 
 if __name__ == "__main__":

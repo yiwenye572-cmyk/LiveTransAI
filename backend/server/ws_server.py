@@ -410,6 +410,7 @@ class TranslationSession:
         if self._flow is not None:
             await self._flow.flush_pending()
             await self._flow.finalize_session()
+            await self._flow.drain_background_tasks()
         if self._session_state is not None:
             self._session_state.phase = SessionPhase.STOPPED
         self._maybe_persist_session()
@@ -535,6 +536,7 @@ class TranslationSession:
                 await flow.flush_pending()
                 if self.state_label != "paused":
                     await flow.finalize_session()
+                    await flow.drain_background_tasks()
                     self._maybe_persist_session()
             if self.state_label == "speaking":
                 self.state_label = "finished"

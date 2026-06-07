@@ -1007,6 +1007,28 @@ async function loadHistoryDetail(sessionId) {
   }
 }
 
+function renderHistorySentence(item) {
+  const corrected = isCorrectedSubtitle(item);
+  const tag = getSubtitleTag(item);
+  const articleClass = corrected ? "subtitle-item subtitle-corrected" : "subtitle-item";
+  const translationHtml = buildSubtitleTranslationHtml({
+    translation: item.translation || "",
+    old_translation: item.old_translation || "",
+    new_translation: item.translation || "",
+    reason: item.reason || "",
+  });
+  return `
+    <article class="${articleClass}">
+      <div class="subtitle-meta">
+        <span>${escapeHtml(item.id || "")}</span>
+        <span class="subtitle-tag">${escapeHtml(tag)}</span>
+      </div>
+      <div class="subtitle-source">EN ${escapeHtml(item.source || "")}</div>
+      <div class="subtitle-translation">${translationHtml}</div>
+    </article>
+  `;
+}
+
 function renderHistoryDetail(payload) {
   const meta = payload.meta || {};
   const summary = payload.summary || {};
@@ -1033,20 +1055,7 @@ function renderHistoryDetail(payload) {
     : '<div class="empty-state">无规整译文</div>';
 
   const sentencesHtml = sentences.length
-    ? sentences
-        .map(
-          (item) => `
-            <article class="subtitle-item">
-              <div class="subtitle-meta">
-                <span>${escapeHtml(item.id || "")}</span>
-                <span class="subtitle-tag">v${escapeHtml(String(item.version || 1))}</span>
-              </div>
-              <div class="subtitle-source">EN ${escapeHtml(item.source || "")}</div>
-              <div class="subtitle-translation">ZH ${escapeHtml(item.translation || "")}</div>
-            </article>
-          `
-        )
-        .join("")
+    ? sentences.map((item) => renderHistorySentence(item)).join("")
     : '<div class="empty-state">无句级记录</div>';
 
   historyDetail.innerHTML = `
