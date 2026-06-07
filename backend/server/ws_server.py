@@ -236,6 +236,8 @@ class TranslationSession:
                     "source": item.get("source", ""),
                     "translation": item.get("translation", ""),
                     "confidence": "corrected" if version > 1 else "fast",
+                    "old_translation": item.get("old_translation", ""),
+                    "reason": item.get("reason", ""),
                 }
             )
 
