@@ -750,6 +750,8 @@ button:disabled {
 
 .app.subtitle-focus-mode .main-grid {
   grid-template-columns: 1fr;
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
 }
 
 .app.subtitle-focus-mode .subtitle-panel {
@@ -763,6 +765,7 @@ button:disabled {
 
 .app.subtitle-focus-mode .subtitle-list {
   padding: 16px 20px 24px;
+  justify-content: flex-end;
 }
 
 .app.subtitle-focus-mode .subtitle-meta {
@@ -823,6 +826,10 @@ button:disabled {
   .main-grid {
     grid-template-columns: 1fr;
     grid-template-rows: minmax(0, 42%) minmax(0, 1fr);
+  }
+
+  .app.subtitle-focus-mode .main-grid {
+    grid-template-rows: minmax(0, 1fr);
   }
 
   .left-column {
