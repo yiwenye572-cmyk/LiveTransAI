@@ -100,9 +100,9 @@ Open the setup page before a live session:
 http://127.0.0.1:8765/setup.html
 ```
 
-Three built-in scenario cards are available: **学术会议**, **商务洽谈**, and **网课**. Click a card to fill the scenario fields; with **一并加载预置术语** checked (default), pre-generated glossary JSON is loaded instantly without calling the LLM. Then click **进入同传** and **开始翻译**.
+Four built-in scenarios are available as an accordion: **通用场景**, **学术会议**, **商务洽谈**, and **网课**. Click a tab to expand it; the description box below updates with template details. With **一并加载预置术语** checked (default for the three preset scenarios), pre-generated glossary JSON loads instantly without calling the LLM. **通用场景** has no preset JSON—fill the scenario fields and use **生成术语表**, or enter live without a glossary.
 
-Recommended demo flow (under 30 seconds): setup page → **网课** card → enter live → play English course audio.
+Recommended demo flow (under 30 seconds): setup page → **网课** tab (default on first visit) → **进入同传** → **开始翻译** → play English course audio.
 
 ### Pause / Resume / Stop
 
