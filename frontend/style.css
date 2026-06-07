@@ -952,7 +952,15 @@ button:disabled {
 
 .app.subtitle-focus-mode .subtitle-list {
   padding: 16px 20px 24px;
-  justify-content: flex-end;
+  overflow-y: auto;
+  min-height: 0;
+  flex: 1;
+}
+
+.app.subtitle-focus-mode .subtitle-list::before {
+  content: "";
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .app.subtitle-focus-mode .subtitle-meta {

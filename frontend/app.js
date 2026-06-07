@@ -501,6 +501,17 @@ function getVisibleBufferSlice() {
   return subtitleBuffer.slice(-count);
 }
 
+function scrollSubtitleListToBottom(force = false) {
+  if (!subtitleList) {
+    return;
+  }
+  const distanceFromBottom =
+    subtitleList.scrollHeight - subtitleList.scrollTop - subtitleList.clientHeight;
+  if (force || distanceFromBottom < 80) {
+    subtitleList.scrollTop = subtitleList.scrollHeight;
+  }
+}
+
 function appendSubtitleToDom(payload) {
   const empty = subtitleList.querySelector(".empty-state");
   if (empty) {
@@ -511,7 +522,7 @@ function appendSubtitleToDom(payload) {
   mountSubtitleItem(item, payload);
   subtitleList.appendChild(item);
   refreshSubtitleLiveHighlight();
-  subtitleList.scrollTop = subtitleList.scrollHeight;
+  scrollSubtitleListToBottom(true);
 }
 
 function renderAllSubtitlesToDom() {
@@ -526,10 +537,10 @@ function renderAllSubtitlesToDom() {
     subtitleList.appendChild(item);
   }
   refreshSubtitleLiveHighlight();
-  subtitleList.scrollTop = subtitleList.scrollHeight;
+  scrollSubtitleListToBottom(true);
 }
 
-function renderVisibleSubtitles() {
+function renderVisibleSubtitles({ scrollToBottom = false } = {}) {
   if (!subtitleFocusMode) {
     return;
   }
@@ -549,7 +560,7 @@ function renderVisibleSubtitles() {
     subtitleList.appendChild(item);
   }
   refreshSubtitleLiveHighlight();
-  subtitleList.scrollTop = subtitleList.scrollHeight;
+  scrollSubtitleListToBottom(scrollToBottom);
 }
 
 function updateSubtitleBufferCorrection(payload) {
@@ -577,7 +588,7 @@ function updateSubtitleBufferCorrection(payload) {
 function appendSubtitle(payload) {
   subtitleBuffer.push(normalizeSubtitlePayload(payload));
   if (subtitleFocusMode) {
-    renderVisibleSubtitles();
+    renderVisibleSubtitles({ scrollToBottom: true });
   } else {
     appendSubtitleToDom(payload);
   }
