@@ -440,14 +440,18 @@ h1 {
 .subtitle-panel-toolbar {
   flex-shrink: 0;
   display: flex;
-  justify-content: flex-end;
-  padding: 8px 16px 0;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid #2a2f3a;
 }
 
 .subtitle-panel-toolbar-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+  margin-left: auto;
 }
 
 .btn-subtitle-focus,
@@ -629,9 +633,9 @@ h1 {
 
 .subtitle-metrics-bar {
   flex-shrink: 0;
-  padding: 10px 20px;
-  border-bottom: 1px solid #2a2f3a;
-  background: rgba(23, 26, 33, 0.95);
+  padding: 0;
+  border-bottom: none;
+  background: transparent;
   font-size: 0.8rem;
   font-weight: 500;
   color: #bdc1c6;
@@ -938,7 +942,7 @@ button:disabled {
   background: #000;
 }
 
-.app.subtitle-focus-mode .subtitle-metrics-bar {
+.app.subtitle-focus-mode .subtitle-panel-toolbar {
   background: rgba(0, 0, 0, 0.95);
   border-bottom-color: #2a2f3a;
 }
