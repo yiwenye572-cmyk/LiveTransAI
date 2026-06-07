@@ -5,22 +5,101 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>LiveTransAI</title>
     <link rel="stylesheet" href="/theme.css" />
-    <link rel="stylesheet" href="/style.css" />
     <link rel="stylesheet" href="/start.css" />
   </head>
   <body>
     <div class="start-app">
-      <main class="start-card">
-        <h1 class="start-logo">LiveTransAI</h1>
-        <p class="start-tagline">
-          AI 同声传译助手：将外语演讲、网课与会议音频实时译为中文，以字幕与语音呈现，并支持智能纠错。
-        </p>
-        <div class="start-actions">
-          <a class="start-btn start-btn-primary" href="/setup.html">配置会话</a>
-          <a class="start-btn start-btn-secondary" href="/live.html">直接进入同传</a>
+      <div class="start-container">
+        <div class="start-split">
+          <header class="start-hero start-card">
+            <h1 class="start-logo">LiveTransAI</h1>
+            <p class="start-tagline">
+              AI 同声传译助手：将外语演讲、网课与会议音频实时译为中文，以字幕与语音呈现，并支持智能纠错。
+            </p>
+            <div class="start-actions">
+              <a class="start-btn start-btn-primary" href="/setup.html">配置会话</a>
+              <a class="start-btn start-btn-secondary" href="/live.html">直接进入同传</a>
+            </div>
+            <p class="start-hint">术语表与场景可在配置页选择，也可跳过直接进入同传。</p>
+          </header>
+
+          <section class="start-features" aria-labelledby="start-features-title">
+          <h2 id="start-features-title" class="start-features-title">核心能力</h2>
+
+          <article class="start-feature start-feature-featured">
+            <div class="start-feature-main">
+              <div class="start-feature-head">
+                <span class="start-feature-badge">核心差异</span>
+                <div class="start-feature-icon" aria-hidden="true">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8" />
+                    <path d="M21 3v5h-5" />
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16" />
+                    <path d="M8 16H3v5" />
+                  </svg>
+                </div>
+                <h3 class="start-feature-title">智能回溯纠错</h3>
+              </div>
+              <p class="start-feature-desc">
+                更多上下文到达后，已展示的字幕可自动修正，修正前后 Diff 清晰可见，不阻塞实时流式体验。
+              </p>
+            </div>
+            <div class="start-diff" aria-label="纠错示意">
+              <span class="start-diff-old">大家好，今天我们将讨论机器学习的基础概念。</span>
+              <span class="start-diff-new">大家好，今天我们将探讨机器学习的基本原理。</span>
+            </div>
+          </article>
+
+          <div class="start-feature-grid">
+            <article class="start-feature">
+              <div class="start-feature-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <rect width="18" height="14" x="3" y="5" rx="2" ry="2" />
+                  <path d="M7 15h4" />
+                  <path d="M7 11h6" />
+                  <path d="M7 7h8" />
+                </svg>
+              </div>
+              <h3 class="start-feature-title">实时双语字幕</h3>
+              <p class="start-feature-desc">
+                原文与译文同步流式展示，专注模式放大字幕，适合演讲、网课与会议场景。
+              </p>
+            </article>
+
+            <article class="start-feature">
+              <div class="start-feature-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="m5 8 6 6" />
+                  <path d="m4 14 6-6 2-3" />
+                  <path d="M2 5h12" />
+                  <path d="M7 2h1" />
+                  <path d="m22 22-5-10-5 10" />
+                  <path d="M14 18h6" />
+                </svg>
+              </div>
+              <h3 class="start-feature-title">多场景与术语</h3>
+              <p class="start-feature-desc">
+                会议、网课、学术等场景一键切换，术语表预配置提升专业词汇翻译准确度。
+              </p>
+            </article>
+
+            <article class="start-feature start-feature-third">
+              <div class="start-feature-icon" aria-hidden="true">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z" />
+                  <path d="M16 9a5 5 0 0 1 0 6" />
+                  <path d="M19.364 18.364a9 9 0 0 0 0-12.728" />
+                </svg>
+              </div>
+              <h3 class="start-feature-title">语音播报</h3>
+              <p class="start-feature-desc">
+                译文 TTS 同步输出，听读兼顾，适合不便盯屏或需要跟读练习的使用场景。
+              </p>
+            </article>
+          </div>
+        </section>
         </div>
-        <p class="start-hint">术语表与场景可在配置页选择，也可跳过直接进入同传。</p>
-      </main>
+      </div>
     </div>
   </body>
 </html>
