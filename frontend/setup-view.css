@@ -2,6 +2,27 @@
   user-select: text;
 }
 
+.setup-header-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.setup-view-active-pill {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #7dcea0;
+  background: rgba(125, 206, 160, 0.12);
+  border: 1px solid rgba(125, 206, 160, 0.35);
+}
+
+.setup-view-active-pill.hidden {
+  display: none;
+}
+
 .setup-view-back {
   display: inline-flex;
   align-items: center;

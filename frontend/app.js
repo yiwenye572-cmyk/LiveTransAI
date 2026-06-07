@@ -3,7 +3,10 @@ const WS_URL = `ws://${window.location.hostname}:8765/stream`;
 const statusBadge = document.getElementById("status-badge");
 const appSubtitle = document.getElementById("app-subtitle");
 const subtitleList = document.getElementById("subtitle-list");
+const subtitleMetricsBar = document.getElementById("subtitle-metrics-bar");
 const metricsBar = document.getElementById("metrics-bar");
+const sessionScenarioChip = document.getElementById("session-scenario-chip");
+const sessionConfigPill = document.getElementById("session-config-pill");
 const summaryMeta = document.getElementById("summary-meta");
 const summaryTopic = document.getElementById("summary-topic");
 const summaryTerms = document.getElementById("summary-terms");
@@ -41,6 +44,7 @@ let memoryCount = 0;
 let formattedSentenceCount = 0;
 let pendingInitialSync = true;
 let lastSessionState = null;
+let lastUiState = "ready";
 
 const STATUS_LABELS = {
   ready: "就绪",
@@ -115,10 +119,44 @@ function renderStoredLanguageHint() {
   appSubtitle.textContent = `${DEFAULT_APP_SUBTITLE} · ${sourceLabel} → 中文`;
 }
 
+function findScenarioByStoredScenario(scenarioText) {
+  if (!scenarioText || !Array.isArray(DEMO_SCENARIOS)) {
+    return null;
+  }
+  return DEMO_SCENARIOS.find((item) => item.scenario === scenarioText) || null;
+}
+
+function renderSessionContextChips() {
+  const config = loadSessionConfig();
+  const matched = findScenarioByStoredScenario(config?.scenario);
+  const termCount = Object.keys(config?.term_map || {}).length;
+
+  if (sessionScenarioChip) {
+    if (matched || config?.scenario) {
+      const label = matched?.label || (config.scenario || "").trim();
+      const suffix = termCount > 0 ? ` · ${termCount} 条术语` : "";
+      sessionScenarioChip.textContent = `${label}${suffix}`;
+      sessionScenarioChip.classList.remove("hidden");
+    } else {
+      sessionScenarioChip.classList.add("hidden");
+    }
+  }
+
+  if (sessionConfigPill) {
+    sessionConfigPill.classList.toggle("hidden", termCount === 0);
+  }
+}
+
 function setStatus(state, message) {
+  lastUiState = state;
   statusBadge.className = `status-badge status-${state}`;
   statusBadge.textContent = message || STATUS_LABELS[state] || state;
   btnStart.disabled = state === "speaking" || state === "paused";
+  if (state === "speaking" || state === "paused") {
+    btnStart.textContent = "翻译中";
+  } else {
+    btnStart.textContent = "开始翻译";
+  }
   const sessionActive = state === "speaking" || state === "paused";
   btnStop.disabled = !sessionActive;
   if (btnPause) {
@@ -130,6 +168,7 @@ function setStatus(state, message) {
   } else if (state === "ready" || state === "finished" || state === "error") {
     setAudioRouteEditing(true);
   }
+  updateCompactMetricsBar();
 }
 
 function sendCommand(action) {
@@ -290,6 +329,7 @@ function resetUiForFreshSession() {
   sentenceCount = 0;
   correctionCount = 0;
   memoryCount = 0;
+  updateCompactMetricsBar();
 }
 
 function restoreSessionSync(payload) {
@@ -301,6 +341,7 @@ function restoreSessionSync(payload) {
     for (const item of subtitles) {
       appendSubtitle(item);
     }
+    refreshSubtitleLiveHighlight();
   }
 
   if (payload.summary) {
@@ -325,18 +366,73 @@ function restoreSessionSync(payload) {
   }
 }
 
+function refreshSubtitleLiveHighlight() {
+  const items = subtitleList.querySelectorAll(".subtitle-item");
+  items.forEach((item, index) => {
+    item.classList.toggle("subtitle-item-live", index === items.length - 1);
+  });
+}
+
 function renderEmptySubtitleState() {
   if (subtitleList.children.length === 0) {
     const sourceLabel = getStoredSourceLanguageLabel();
-    subtitleList.innerHTML =
-      `<div class="empty-state">点击“开始翻译”，然后播放${sourceLabel}音频</div>`;
+    subtitleList.innerHTML = `<div class="empty-state"><p>点击「开始翻译」，然后播放${sourceLabel}音频</p><p class="subtitle-empty-steps">① 选择监听设备 → ② 开始翻译 → ③ 播放音频</p></div>`;
   }
 }
 
 function renderEmptyFormattedState() {
-  formattedContent.innerHTML = '<div class="empty-state">纠错批次完成后，规整段落将在此追加</div>';
-  formattedMeta.textContent = "等待纠错批次…";
+  formattedContent.innerHTML =
+    '<div class="empty-state">翻译结束后，纠错后的完整段落将在此展示</div>';
+  formattedMeta.textContent = "翻译结束后展示";
   formattedSentenceCount = 0;
+}
+
+function isCorrectedSubtitle(payload) {
+  const version = Number(payload.version || payload.new_version || 1);
+  return Boolean(payload.old_translation) || version > 1 || payload.confidence === "corrected";
+}
+
+function getSubtitleTag(payload) {
+  return isCorrectedSubtitle(payload) ? "corrected" : payload.confidence || "fast";
+}
+
+function buildSubtitleTranslationHtml(payload) {
+  const oldTranslation = payload.old_translation || "";
+  const newTranslation = payload.new_translation || payload.translation || "";
+  if (oldTranslation) {
+    const reasonHtml = payload.reason
+      ? `<div class="correction-reason">修正：${escapeHtml(payload.reason)}</div>`
+      : "";
+    return `ZH <span class="translation-old">${escapeHtml(oldTranslation)}</span> <span class="translation-new">${escapeHtml(newTranslation)}</span>${reasonHtml}`;
+  }
+  return `ZH ${escapeHtml(newTranslation)}`;
+}
+
+function getSubtitleSourceFromItem(item) {
+  const sourceEl = item.querySelector(".subtitle-source");
+  if (!sourceEl) {
+    return "";
+  }
+  return sourceEl.textContent.replace(/^EN\s*/, "").trim();
+}
+
+function mountSubtitleItem(item, payload) {
+  const subtitleId = payload.id || payload.target_id || "";
+  const version = payload.new_version || payload.version || 1;
+  item.className = "subtitle-item";
+  if (isCorrectedSubtitle(payload)) {
+    item.classList.add("subtitle-corrected");
+  }
+  item.dataset.id = subtitleId;
+  item.dataset.version = String(version);
+  item.innerHTML = `
+    <div class="subtitle-meta">
+      <span>${escapeHtml(subtitleId)}</span>
+      <span class="subtitle-tag">${escapeHtml(getSubtitleTag(payload))}</span>
+    </div>
+    <div class="subtitle-source">EN ${escapeHtml(payload.source || "")}</div>
+    <div class="subtitle-translation">${buildSubtitleTranslationHtml(payload)}</div>
+  `;
 }
 
 function appendSubtitle(payload) {
@@ -346,18 +442,9 @@ function appendSubtitle(payload) {
   }
 
   const item = document.createElement("article");
-  item.className = "subtitle-item";
-  item.dataset.id = payload.id;
-  item.dataset.version = String(payload.version || 1);
-  item.innerHTML = `
-    <div class="subtitle-meta">
-      <span>${payload.id}</span>
-      <span class="subtitle-tag">${payload.confidence || "fast"}</span>
-    </div>
-    <div class="subtitle-source">EN ${escapeHtml(payload.source || "")}</div>
-    <div class="subtitle-translation">ZH ${escapeHtml(payload.translation || "")}</div>
-  `;
+  mountSubtitleItem(item, payload);
   subtitleList.appendChild(item);
+  refreshSubtitleLiveHighlight();
   subtitleList.scrollTop = subtitleList.scrollHeight;
 }
 
@@ -370,22 +457,16 @@ function applyCorrection(payload) {
     return;
   }
 
-  const translationEl = item.querySelector(".subtitle-translation");
-  const tagEl = item.querySelector(".subtitle-tag");
-  if (!translationEl) {
-    return;
-  }
-
-  const reasonHtml = payload.reason
-    ? `<div class="correction-reason">修正：${escapeHtml(payload.reason)}</div>`
-    : "";
-
-  translationEl.innerHTML = `ZH <span class="translation-old">${escapeHtml(payload.old_translation || "")}</span> <span class="translation-new">${escapeHtml(payload.new_translation || "")}</span>${reasonHtml}`;
-  item.dataset.version = String(payload.new_version);
-  item.classList.add("subtitle-corrected");
-  if (tagEl) {
-    tagEl.textContent = "corrected";
-  }
+  mountSubtitleItem(item, {
+    id: payload.target_id,
+    version: payload.new_version,
+    source: getSubtitleSourceFromItem(item),
+    old_translation: payload.old_translation,
+    new_translation: payload.new_translation,
+    translation: payload.new_translation,
+    reason: payload.reason,
+    confidence: "corrected",
+  });
 }
 
 function ensureParagraph(paragraphId, paragraphIndex) {
@@ -458,6 +539,18 @@ function renderFormattedSnapshot(payload) {
   formattedMeta.textContent = `已规整 ${payload.updated_at_sentence || paragraphs.length} 句`;
 }
 
+function updateCompactMetricsBar() {
+  if (!subtitleMetricsBar) {
+    return;
+  }
+  const sessionActive = lastUiState === "speaking" || lastUiState === "paused";
+  const showBar = sessionActive || sentenceCount > 0;
+  subtitleMetricsBar.classList.toggle("hidden", !showBar);
+  if (showBar) {
+    subtitleMetricsBar.textContent = `已翻译 ${sentenceCount} 句 · 已修正 ${correctionCount} 处`;
+  }
+}
+
 function updateMetrics(payload) {
   sentenceCount = payload.sentence_count ?? sentenceCount;
   correctionCount = payload.correction_count ?? correctionCount;
@@ -475,11 +568,13 @@ function updateMetrics(payload) {
       ? ` · 合并 ${mergeCount} 次（AST ${fragmentCount} 段 → ${sentenceCount} 句）`
       : "";
   metricsBar.textContent = `${latencyPart}已翻译: ${sentenceCount} 句 · 已修正: ${correctionCount} 处 · 记忆: ${memoryCount} 条${mergeHint}`;
+  updateCompactMetricsBar();
 }
 
 function renderSummary(payload) {
   const at = payload.updated_at_sentence ?? 0;
-  summaryMeta.textContent = at > 0 ? `已更新至第 ${at} 句` : "等待更新…";
+  summaryMeta.textContent =
+    at > 0 ? `已更新至第 ${at} 句` : "会话主题将在翻译开始后自动生成";
 
   const topic = (payload.topic || "").trim();
   summaryTopic.textContent = topic ? `主题：${topic}` : "主题：—";
@@ -847,6 +942,7 @@ resetSummary();
 updateTtsButton();
 setAudioRouteEditing(true);
 renderStoredLanguageHint();
+renderSessionContextChips();
 markLiveSessionActive();
 updateGlossaryViewLink();
 loadAudioDevices();

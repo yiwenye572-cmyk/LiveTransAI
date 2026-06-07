@@ -6,6 +6,7 @@ const instructionField = document.getElementById("setup-view-instruction");
 const sourceLangField = document.getElementById("setup-view-source-lang");
 const targetLangField = document.getElementById("setup-view-target-lang");
 const footerStatus = document.getElementById("setup-view-footer-status");
+const setupViewActivePill = document.getElementById("setup-view-active-pill");
 const glossaryPreview = document.getElementById("glossary-preview");
 const glossaryCount = document.getElementById("glossary-count");
 
@@ -127,6 +128,15 @@ async function initSetupView() {
 
   renderPreview(config);
   renderFooterStatus(config, termCount);
+
+  if (setupViewActivePill) {
+    const hasConfig = Boolean(
+      (config.scenario || "").trim() ||
+        (config.instruction || "").trim() ||
+        termCount > 0
+    );
+    setupViewActivePill.classList.toggle("hidden", !hasConfig);
+  }
 
   try {
     const response = await fetch("/api/languages");

@@ -331,6 +331,8 @@ class FlowController:
                 return False
             sentence["translation"] = new_translation
             sentence["version"] = new_version
+            sentence["old_translation"] = item.get("old_translation", "")
+            sentence["reason"] = item.get("reason", "")
             return True
         return False
 

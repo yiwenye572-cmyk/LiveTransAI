@@ -9,23 +9,29 @@
   <body>
     <div class="app">
       <header class="header">
-        <div>
-          <h1>LiveTransAI</h1>
+        <div class="header-brand">
+          <div class="header-title-row">
+            <h1>LiveTransAI</h1>
+            <span id="session-scenario-chip" class="session-scenario-chip hidden"></span>
+            <span id="session-config-pill" class="session-config-pill hidden">术语已加载</span>
+          </div>
           <p class="subtitle" id="app-subtitle">AI 同声传译助手</p>
         </div>
-        <div id="status-badge" class="status-badge status-ready">就绪</div>
-        <a id="btn-glossary-view" class="header-link" href="/setup-view.html">会话配置</a>
-        <a class="header-link" href="/metrics.html">指标检测</a>
-        <button id="btn-new-session" type="button" class="btn-history">开始新翻译</button>
-        <button id="btn-history" type="button" class="btn-history">历史</button>
+        <div class="header-actions">
+          <div id="status-badge" class="status-badge status-ready">就绪</div>
+          <a id="btn-glossary-view" class="header-link" href="/setup-view.html">会话配置</a>
+          <a class="header-link" href="/metrics.html">指标检测</a>
+          <button id="btn-history" type="button" class="btn-header-secondary">历史</button>
+          <button id="btn-new-session" type="button" class="btn-header-secondary">开始新翻译</button>
+        </div>
       </header>
 
       <main class="main-grid">
         <aside class="left-column">
-          <section id="summary-panel" class="summary-panel">
+          <section id="summary-panel" class="summary-panel panel-accent-summary">
             <div class="summary-header">
               <h2>会话摘要</h2>
-              <span id="summary-meta" class="summary-meta">等待更新…</span>
+              <span id="summary-meta" class="summary-meta">会话主题将在翻译开始后自动生成</span>
             </div>
             <div id="summary-topic" class="summary-topic">主题：—</div>
             <div class="summary-scroll">
@@ -34,18 +40,21 @@
             </div>
           </section>
 
-          <section id="formatted-panel" class="formatted-panel">
+          <section id="formatted-panel" class="formatted-panel panel-accent-formatted">
             <div class="formatted-header">
               <h2>规整译文</h2>
-              <span id="formatted-meta" class="formatted-meta">等待纠错批次…</span>
+              <span id="formatted-meta" class="formatted-meta">翻译结束后展示</span>
             </div>
             <div id="formatted-content" class="formatted-content">
-              <div class="empty-state">纠错批次完成后，规整段落将在此追加</div>
+              <div class="empty-state">翻译结束后，纠错后的完整段落将在此展示</div>
             </div>
           </section>
         </aside>
 
-        <section id="subtitle-list" class="subtitle-list"></section>
+        <section class="subtitle-panel">
+          <div id="subtitle-metrics-bar" class="subtitle-metrics-bar hidden">已翻译: 0 句</div>
+          <div id="subtitle-list" class="subtitle-list"></div>
+        </section>
       </main>
 
       <footer class="footer">
@@ -61,14 +70,17 @@
             </label>
           </div>
           <p id="audio-route-status" class="audio-route-status hidden"></p>
-          <p id="audio-route-hint" class="audio-route-hint"></p>
+          <details id="audio-route-hint-wrap" class="audio-hint-details">
+            <summary>如何设置监听设备？</summary>
+            <p id="audio-route-hint" class="audio-route-hint"></p>
+          </details>
         </section>
         <div id="metrics-bar" class="metrics-bar">已翻译: 0 句</div>
         <div class="controls">
           <button id="btn-tts" type="button" class="btn-tts" aria-pressed="false" title="播放豆包同声传译中文语音">语音关</button>
           <button id="btn-start" type="button">开始翻译</button>
-          <button id="btn-pause" type="button" disabled>暂停</button>
-          <button id="btn-stop" type="button" disabled>停止</button>
+          <button id="btn-pause" type="button" class="btn-secondary" disabled>暂停</button>
+          <button id="btn-stop" type="button" class="btn-secondary" disabled>停止</button>
         </div>
       </footer>
     </div>
@@ -90,6 +102,7 @@
       </div>
     </div>
     <script src="/glossary.js"></script>
+    <script src="/demo-scenarios/scenarios.js"></script>
     <script src="/tts.js"></script>
     <script src="/app.js"></script>
   </body>
