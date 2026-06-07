@@ -32,6 +32,12 @@ const audioRouteHint = document.getElementById("audio-route-hint");
 
 const LOOPBACK_STORAGE_KEY = "livetransai-loopback-index";
 const TTS_OUTPUT_STORAGE_KEY = "livetransai-tts-output-id";
+const SUBTITLE_FOCUS_KEY = "livetransai_subtitle_focus";
+
+const appRoot = document.querySelector(".app");
+const btnSubtitleFocus = document.getElementById("btn-subtitle-focus");
+
+let subtitleFocusMode = false;
 
 let selectedHistoryId = null;
 let audioDevicesLoaded = false;
@@ -633,6 +639,43 @@ function closeHistoryPanel() {
   historyOverlay.setAttribute("aria-hidden", "true");
 }
 
+function setSubtitleFocusMode(enabled) {
+  subtitleFocusMode = Boolean(enabled);
+  if (appRoot) {
+    appRoot.classList.toggle("subtitle-focus-mode", subtitleFocusMode);
+  }
+  if (btnSubtitleFocus) {
+    btnSubtitleFocus.textContent = subtitleFocusMode ? "退出专注" : "专注字幕";
+    btnSubtitleFocus.setAttribute("aria-pressed", subtitleFocusMode ? "true" : "false");
+    btnSubtitleFocus.title = subtitleFocusMode
+      ? "恢复完整界面"
+      : "隐藏摘要与控制区，放大字幕";
+  }
+  try {
+    if (subtitleFocusMode) {
+      sessionStorage.setItem(SUBTITLE_FOCUS_KEY, "1");
+    } else {
+      sessionStorage.removeItem(SUBTITLE_FOCUS_KEY);
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function toggleSubtitleFocusMode() {
+  setSubtitleFocusMode(!subtitleFocusMode);
+}
+
+function initSubtitleFocusMode() {
+  let stored = false;
+  try {
+    stored = sessionStorage.getItem(SUBTITLE_FOCUS_KEY) === "1";
+  } catch {
+    stored = false;
+  }
+  setSubtitleFocusMode(stored);
+}
+
 async function startNewTranslation() {
   btnNewSession.disabled = true;
   try {
@@ -935,6 +978,20 @@ historyOverlay.addEventListener("click", (event) => {
     closeHistoryPanel();
   }
 });
+if (btnSubtitleFocus) {
+  btnSubtitleFocus.addEventListener("click", toggleSubtitleFocusMode);
+}
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") {
+    return;
+  }
+  if (historyOverlay && !historyOverlay.classList.contains("hidden")) {
+    return;
+  }
+  if (subtitleFocusMode) {
+    setSubtitleFocusMode(false);
+  }
+});
 
 renderEmptySubtitleState();
 renderEmptyFormattedState();
@@ -945,6 +1002,7 @@ renderStoredLanguageHint();
 renderSessionContextChips();
 markLiveSessionActive();
 updateGlossaryViewLink();
+initSubtitleFocusMode();
 loadAudioDevices();
 if (window.translationTts) {
   window.translationTts.setCaptureControl(sendCaptureSuppress);

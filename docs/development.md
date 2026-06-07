@@ -93,7 +93,7 @@ From there:
 - **配置会话** → `/setup.html` (optional glossary and scenario)
 - **直接进入同传** → `/live.html`
 
-On the live page, click **开始翻译**, then play English audio on your computer. Subtitles should appear in real time.
+On the live page, click **开始翻译**, then play English audio on your computer. Subtitles should appear in real time. For split-screen viewing (e.g. video on one half of the monitor), use **专注字幕** in the subtitle panel to hide the summary column and device settings while keeping enlarged bilingual subtitles (EN source + ZH translation) and the voice/start/pause/stop controls.
 
 While a session is active (`livetransai_live_active` in sessionStorage), **会话配置** on the live page opens `/setup-view.html`: a read-only snapshot with the same left-config / right-preview layout as `/setup.html`, but all controls are static text (scenario cards, languages, glossary preview). Use **← 返回同传** to return without stopping the session. If you open `/setup-view.html` before a session starts, you are redirected to `/setup.html`. Use **开始新翻译** on the live page to end the session and start over from the landing page.
 

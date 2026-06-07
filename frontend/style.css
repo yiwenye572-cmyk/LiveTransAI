@@ -437,6 +437,31 @@ h1 {
   overflow: hidden;
 }
 
+.subtitle-panel-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 16px 0;
+}
+
+.btn-subtitle-focus {
+  padding: 6px 12px;
+  font-size: 0.8rem;
+  background: transparent;
+  color: #8ab4f8;
+  border: 1px solid #3c4043;
+  border-radius: 8px;
+}
+
+.btn-subtitle-focus:hover {
+  background: #2a2f3a;
+}
+
+.btn-subtitle-focus[aria-pressed="true"] {
+  background: rgba(138, 180, 248, 0.12);
+  border-color: #8ab4f8;
+}
+
 .subtitle-metrics-bar {
   flex-shrink: 0;
   padding: 10px 20px;
@@ -716,6 +741,82 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+.app.subtitle-focus-mode .header,
+.app.subtitle-focus-mode .left-column {
+  display: none;
+}
+
+.app.subtitle-focus-mode .main-grid {
+  grid-template-columns: 1fr;
+}
+
+.app.subtitle-focus-mode .subtitle-panel {
+  background: #000;
+}
+
+.app.subtitle-focus-mode .subtitle-metrics-bar {
+  background: rgba(0, 0, 0, 0.95);
+  border-bottom-color: #2a2f3a;
+}
+
+.app.subtitle-focus-mode .subtitle-list {
+  padding: 16px 20px 24px;
+}
+
+.app.subtitle-focus-mode .subtitle-meta {
+  display: none;
+}
+
+.app.subtitle-focus-mode .subtitle-source {
+  color: #9aa0a6;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+}
+
+.app.subtitle-focus-mode .subtitle-item {
+  background: #0a0a0a;
+  border-color: #1f1f1f;
+}
+
+.app.subtitle-focus-mode .subtitle-item-live {
+  background: #111;
+  border-color: #5f6368;
+}
+
+.app.subtitle-focus-mode .subtitle-translation {
+  font-size: 1.5rem;
+}
+
+.app.subtitle-focus-mode .subtitle-item-live .subtitle-translation {
+  font-size: 1.75rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.app.subtitle-focus-mode .subtitle-corrected {
+  border-color: #3d5afe;
+}
+
+.app.subtitle-focus-mode .correction-reason {
+  font-size: 0.85rem;
+}
+
+.app.subtitle-focus-mode .footer {
+  padding: 10px 16px;
+  background: #0a0a0a;
+  border-top-color: #2a2f3a;
+}
+
+.app.subtitle-focus-mode .footer .audio-route-panel,
+.app.subtitle-focus-mode .footer .metrics-bar {
+  display: none;
+}
+
+.app.subtitle-focus-mode .footer .controls {
+  justify-content: center;
+  width: 100%;
 }
 
 @media (max-width: 900px) {
