@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>会话配置（只读）· LiveTransAI</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/setup.css" />
+    <link rel="stylesheet" href="/setup-view.css" />
+  </head>
+  <body class="setup-view-page">
+    <div class="setup-app">
+      <header class="setup-header">
+        <div>
+          <h1>会话配置</h1>
+          <p class="subtitle">本场配置（只读），查看后可返回当前同传会话</p>
+        </div>
+        <a class="setup-view-back" href="/live.html">← 返回同传</a>
+      </header>
+
+      <main id="setup-main" class="setup-main setup-main-view">
+        <section class="setup-form-panel">
+          <div class="setup-glossary-block">
+            <h2 class="setup-section-title">术语表（可选）</h2>
+
+            <div class="setup-accordion">
+              <div
+                id="setup-view-scenarios"
+                class="setup-accordion-tabs setup-view-scenarios"
+                role="list"
+                aria-label="本场 Demo 场景"
+              ></div>
+            </div>
+
+            <p id="setup-view-pregen" class="setup-view-pregen-badge">未加载预置术语</p>
+
+            <div id="setup-view-detail" class="setup-scenario-desc setup-view-detail" role="note">
+              <p class="setup-scenario-desc-placeholder">暂无场景说明</p>
+            </div>
+
+            <div class="setup-general-fields setup-view-fields">
+              <span class="setup-label">业务场景</span>
+              <div id="setup-view-scenario" class="setup-static-field">—</div>
+
+              <span class="setup-label">一句话说明</span>
+              <div id="setup-view-instruction" class="setup-static-field">—</div>
+            </div>
+          </div>
+
+          <div class="setup-language-block">
+            <h2 class="setup-section-title">翻译语言</h2>
+            <div class="setup-language-inline">
+              <div class="setup-language-col">
+                <span class="setup-label">源语言</span>
+                <div id="setup-view-source-lang" class="setup-target-language setup-static-field">—</div>
+              </div>
+              <div class="setup-language-col">
+                <span class="setup-label">目标语言</span>
+                <div id="setup-view-target-lang" class="setup-target-language setup-static-field">中文</div>
+              </div>
+            </div>
+            <p class="setup-language-hint">术语表按所选源语言生成，并用于本场同传识别与翻译。</p>
+            <p id="setup-view-footer-status" class="setup-view-footer-status">加载中…</p>
+          </div>
+        </section>
+
+        <section class="setup-preview-panel">
+          <div class="setup-preview-header">
+            <h2>术语预览</h2>
+            <span id="glossary-count" class="setup-meta">0 条</span>
+          </div>
+          <div id="glossary-preview" class="glossary-preview">
+            <div class="empty-state">尚未生成术语表</div>
+          </div>
+        </section>
+      </main>
+    </div>
+    <script src="/glossary.js"></script>
+    <script src="/demo-scenarios/scenarios.js"></script>
+    <script src="/setup-view.js"></script>
+  </body>
+</html>

@@ -95,6 +95,8 @@ From there:
 
 On the live page, click **开始翻译**, then play English audio on your computer. Subtitles should appear in real time.
 
+While a session is active (`livetransai_live_active` in sessionStorage), **会话配置** on the live page opens `/setup-view.html`: a read-only snapshot with the same left-config / right-preview layout as `/setup.html`, but all controls are static text (scenario cards, languages, glossary preview). Use **← 返回同传** to return without stopping the session. If you open `/setup-view.html` before a session starts, you are redirected to `/setup.html`. Use **开始新翻译** on the live page to end the session and start over from the landing page.
+
 If you generate a glossary on `/setup.html` before starting, the same bundle is sent to Doubao AST at session start (`corpus.hot_words_list` for source recognition and `corpus.glossary_list` for translation hints) and to DeepSeek correction prompts (`static_glossary`).
 
 ### Demo Scenarios (答辩预设)
@@ -108,6 +110,8 @@ Recommended demo flow (under 30 seconds):
 Four built-in scenarios are available as an accordion: **通用场景**, **学术会议**, **商务洽谈**, and **网课**. Click a tab to expand it; the description box below updates with template details. With **一并加载预置术语** checked (default for the three preset scenarios), pre-generated glossary JSON loads instantly without calling the LLM. **通用场景** has no preset JSON—fill the scenario fields and use **生成术语表**, or enter live without a glossary.
 
 Quick path: landing page → **直接进入同传** → **开始翻译** (no glossary required).
+
+To verify the read-only config page: start a session on `/live.html`, then open **会话配置** → `/setup-view.html`. Confirm scenario cards, languages, and glossary are static; click **← 返回同传** to resume without stopping the session.
 
 ### Pause / Resume / Stop
 
