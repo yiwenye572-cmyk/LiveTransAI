@@ -1,7 +1,6 @@
 # LiveTransAI
 
-> **Demo 演示视频**：[待上传 — 点击替换为 B 站/网盘链接](https://example.com)
-
+> **Demo 演示视频**：https://www.bilibili.com/video/BV1EHEh6NEP1
 AI 同声传译助手：将外语音频实时译为中文，以字幕与语音呈现，并在不阻塞实时性的前提下支持回溯纠错。
 
 <p align="center">
