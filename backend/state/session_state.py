@@ -5,6 +5,7 @@ from pathlib import Path
 from backend.format.formatted_document import FormattedDocument
 from backend.memory.memory_entry import MemoryEntry
 from backend.summary.running_summary import RunningSummary
+from backend.utils.session_metrics import SessionMetrics
 
 
 class SessionPhase(Enum):
@@ -35,3 +36,4 @@ class SessionState:
     hot_words_list: list[str] = field(default_factory=list)
     source_language: str = "en"
     target_language: str = "zh"
+    metrics: SessionMetrics = field(default_factory=SessionMetrics)

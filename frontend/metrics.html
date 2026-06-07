@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="zh-CN" class="metrics-page">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>指标检测 · LiveTransAI</title>
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/metrics.css" />
+  </head>
+  <body>
+    <div class="metrics-app">
+      <header class="metrics-header">
+        <div>
+          <h1>指标检测</h1>
+          <p class="subtitle">会话延迟与 LLM 调用统计（AST 出句 → 上屏）</p>
+        </div>
+        <div class="metrics-header-actions">
+          <span id="metrics-connection" class="metrics-connection">连接中…</span>
+          <a class="metrics-link" href="/">返回同传</a>
+        </div>
+      </header>
+
+      <main class="metrics-main">
+        <p id="metrics-empty" class="metrics-empty hidden">请先在同传页开始翻译，再打开本页查看实时指标。</p>
+
+        <section id="metrics-session-panel" class="metrics-panel hidden">
+          <h2 class="metrics-section-title">会话</h2>
+          <div class="metrics-grid">
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">状态</span>
+              <span id="metric-status" class="metrics-stat-value">—</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">运行时长</span>
+              <span id="metric-elapsed" class="metrics-stat-value">—</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">语言</span>
+              <span id="metric-language" class="metrics-stat-value">—</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">AST 片段</span>
+              <span id="metric-fragments" class="metrics-stat-value">0</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">修正次数</span>
+              <span id="metric-corrections" class="metrics-stat-value">0</span>
+            </div>
+          </div>
+        </section>
+
+        <section id="metrics-latency-panel" class="metrics-panel hidden">
+          <h2 class="metrics-section-title">上屏延迟（A）</h2>
+          <div class="metrics-latency-cards">
+            <div class="metrics-stat metrics-latency-stat">
+              <span class="metrics-stat-label">P50</span>
+              <span id="metric-latency-p50" class="metrics-stat-value">—</span>
+            </div>
+            <div class="metrics-stat metrics-latency-stat">
+              <span class="metrics-stat-label">P99</span>
+              <span id="metric-latency-p99" class="metrics-stat-value">—</span>
+            </div>
+          </div>
+          <div class="metrics-table-wrap">
+            <table class="metrics-table">
+              <thead>
+                <tr>
+                  <th>句 ID</th>
+                  <th>上屏延迟</th>
+                  <th>合并段数</th>
+                  <th>等待</th>
+                </tr>
+              </thead>
+              <tbody id="metric-latency-rows"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section id="metrics-llm-panel" class="metrics-panel hidden">
+          <h2 class="metrics-section-title">DeepSeek LLM（B）</h2>
+          <div class="metrics-grid">
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">纠错调用</span>
+              <span id="metric-correction-calls" class="metrics-stat-value">0</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">摘要调用</span>
+              <span id="metric-summary-calls" class="metrics-stat-value">0</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">术语调用</span>
+              <span id="metric-glossary-calls" class="metrics-stat-value">0</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">LLM 错误</span>
+              <span id="metric-llm-errors" class="metrics-stat-value">0</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">Token 合计</span>
+              <span id="metric-tokens-total" class="metrics-stat-value">0</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">Prompt / Completion</span>
+              <span id="metric-tokens-split" class="metrics-stat-value">0 / 0</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">纠错耗时 P50</span>
+              <span id="metric-correction-latency" class="metrics-stat-value">—</span>
+            </div>
+            <div class="metrics-stat">
+              <span class="metrics-stat-label">摘要耗时 P50</span>
+              <span id="metric-summary-latency" class="metrics-stat-value">—</span>
+            </div>
+          </div>
+        </section>
+
+        <p class="metrics-footnote">
+          上屏延迟 = AST 出句到流控 commit 的时间，不含麦克风采集与 TTS 播放全链路。
+        </p>
+      </main>
+    </div>
+
+    <script src="/metrics.js"></script>
+  </body>
+</html>
