@@ -111,7 +111,6 @@
   gap: 6px;
   min-height: 120px;
   overflow-x: auto;
-  scrollbar-width: thin;
   align-items: stretch;
 }
 
