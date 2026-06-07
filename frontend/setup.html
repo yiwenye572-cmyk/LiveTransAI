@@ -33,6 +33,17 @@
           </div>
 
           <h2 class="setup-section-title">术语表（可选）</h2>
+
+          <div id="setup-demo-panel" class="setup-demo-panel">
+            <p class="setup-demo-heading">快速选择场景</p>
+            <div id="setup-demo-grid" class="setup-demo-grid" role="listbox" aria-label="内置 Demo 场景"></div>
+            <label class="setup-demo-option">
+              <input id="setup-demo-load-pregen" type="checkbox" checked />
+              一并加载预置术语（推荐答辩演示）
+            </label>
+            <p class="setup-demo-hint">点选卡片可快速配置；取消勾选则仅填入下方文案，仍可手动生成术语表。</p>
+          </div>
+
           <label class="setup-label" for="glossary-scenario">业务场景</label>
           <input
             id="glossary-scenario"
@@ -70,6 +81,7 @@
       </main>
     </div>
     <script src="/glossary.js"></script>
+    <script src="/demo-scenarios/scenarios.js"></script>
     <script src="/setup.js"></script>
   </body>
 </html>
