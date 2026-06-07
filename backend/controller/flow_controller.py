@@ -50,6 +50,37 @@ class FlowController:
         self._last_format_flush_time = 0.0
         self._correction_running = False
         self._summary_running = False
+        self._background_tasks: set[asyncio.Task] = set()
+
+    def _spawn_background(self, coro) -> None:
+        task = asyncio.create_task(coro)
+        self._background_tasks.add(task)
+        task.add_done_callback(self._background_tasks.discard)
+
+    async def drain_background_tasks(self, timeout_sec: float = 30.0) -> None:
+        if self._commit_timer and not self._commit_timer.done():
+            self._commit_timer.cancel()
+            try:
+                await self._commit_timer
+            except asyncio.CancelledError:
+                pass
+            self._commit_timer = None
+
+        pending = [task for task in self._background_tasks if not task.done()]
+        if not pending:
+            return
+
+        try:
+            await asyncio.wait_for(
+                asyncio.gather(*pending, return_exceptions=True),
+                timeout=timeout_sec,
+            )
+        except asyncio.TimeoutError:
+            logger.warning(
+                "Timed out waiting for %s background tasks after %.0fs",
+                len(pending),
+                timeout_sec,
+            )
 
     async def on_new_sentence(self, fragment: dict) -> None:
         self.state.ast_fragment_count += 1
@@ -220,14 +251,14 @@ class FlowController:
         await self.bus.publish("commit_display", merged)
 
         if self._should_trigger_summary():
-            asyncio.create_task(self._run_summary())
+            self._spawn_background(self._run_summary())
 
         if self._should_trigger_correction():
             self._last_correction_time = time.time()
-            asyncio.create_task(self._run_correction())
+            self._spawn_background(self._run_correction())
         elif self._should_trigger_format_flush():
             self._last_format_flush_time = time.time()
-            asyncio.create_task(self._run_format_flush())
+            self._spawn_background(self._run_format_flush())
 
     def _should_trigger_format_flush(self) -> bool:
         if len(self.state.displayed_sentences) < self.MIN_SENTENCES:

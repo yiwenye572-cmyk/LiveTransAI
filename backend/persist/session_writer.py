@@ -92,15 +92,25 @@ class SessionWriter:
             },
             "formatted_paragraphs": paragraphs,
             "sentences": [
-                {
-                    "id": item.get("id", ""),
-                    "version": int(item.get("version", 1)),
-                    "source": item.get("source", ""),
-                    "translation": item.get("translation", ""),
-                }
+                cls._sentence_snapshot(item)
                 for item in state.displayed_sentences
             ],
             "memory_entries": [asdict(entry) for entry in state.memory_entries],
+        }
+
+    @classmethod
+    def _sentence_snapshot(cls, item: dict) -> dict:
+        version = int(item.get("version", 1))
+        old_translation = str(item.get("old_translation", "") or "")
+        reason = str(item.get("reason", "") or "")
+        return {
+            "id": item.get("id", ""),
+            "version": version,
+            "source": item.get("source", ""),
+            "translation": item.get("translation", ""),
+            "old_translation": old_translation,
+            "reason": reason,
+            "confidence": "corrected" if version > 1 or old_translation else "fast",
         }
 
     @classmethod
