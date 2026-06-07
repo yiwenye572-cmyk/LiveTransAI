@@ -14,59 +14,79 @@
           <h1>会话配置</h1>
           <p class="subtitle">配置源语言与可选术语表，再进入同声传译</p>
         </div>
-        <a id="setup-header-action" class="setup-link" href="/">跳过，直接进入同传</a>
+        <a id="setup-header-action" class="setup-link" href="/live.html">跳过，直接进入同传</a>
       </header>
 
       <main id="setup-main" class="setup-main">
         <section id="setup-form-panel" class="setup-form-panel">
-          <div class="setup-language-panel">
-            <h2 class="setup-section-title">翻译语言</h2>
-            <div class="setup-language-row">
-              <label class="setup-label" for="source-language-select">源语言</label>
-              <select id="source-language-select" class="setup-input setup-select"></select>
-            </div>
-            <div class="setup-language-row">
-              <span class="setup-label">目标语言</span>
-              <div id="target-language-label" class="setup-target-language">中文</div>
-            </div>
-            <p class="setup-language-hint">术语表将按上方所选源语言生成，并用于本场同传识别与翻译。</p>
-          </div>
+          <div id="setup-glossary-block" class="setup-glossary-block">
+            <h2 class="setup-section-title">术语表（可选）</h2>
 
-          <h2 class="setup-section-title">术语表（可选）</h2>
+            <div id="setup-accordion" class="setup-accordion">
+              <div
+                id="setup-accordion-tabs"
+                class="setup-accordion-tabs"
+                role="tablist"
+                aria-label="内置 Demo 场景"
+              ></div>
+            </div>
 
-          <div id="setup-demo-panel" class="setup-demo-panel">
-            <p class="setup-demo-heading">快速选择场景</p>
-            <div id="setup-demo-grid" class="setup-demo-grid" role="listbox" aria-label="内置 Demo 场景"></div>
-            <label class="setup-demo-option">
+            <label class="setup-pregen-option">
               <input id="setup-demo-load-pregen" type="checkbox" checked />
               一并加载预置术语
             </label>
-            <p class="setup-demo-hint">点选卡片可快速配置；取消勾选则仅填入下方文案，仍可手动生成术语表。</p>
+
+            <div
+              id="setup-scenario-desc"
+              class="setup-scenario-desc"
+              tabindex="0"
+              role="note"
+              aria-label="场景说明"
+            >
+              <p class="setup-scenario-desc-placeholder">点选上方场景卡片查看说明</p>
+            </div>
+
+            <div id="setup-general-fields" class="setup-general-fields" hidden>
+              <label class="setup-label" for="glossary-scenario">业务场景</label>
+              <input
+                id="glossary-scenario"
+                class="setup-input"
+                type="text"
+                maxlength="200"
+                placeholder="例：AI 技术分享会"
+              />
+
+              <label class="setup-label" for="glossary-instruction">一句话说明</label>
+              <input
+                id="glossary-instruction"
+                class="setup-input"
+                type="text"
+                maxlength="300"
+                placeholder="例：工程向分享，术语用大陆常用译法"
+              />
+            </div>
           </div>
 
-          <label class="setup-label" for="glossary-scenario">业务场景</label>
-          <input
-            id="glossary-scenario"
-            class="setup-input"
-            type="text"
-            maxlength="200"
-            placeholder="例：AI 技术分享会"
-          />
+          <div class="setup-language-block">
+            <h2 class="setup-section-title">翻译语言</h2>
+            <div class="setup-language-inline">
+              <div class="setup-language-col">
+                <label class="setup-label" for="source-language-select">源语言</label>
+                <select id="source-language-select" class="setup-input setup-select"></select>
+              </div>
+              <div class="setup-language-col">
+                <span class="setup-label">目标语言</span>
+                <div id="target-language-label" class="setup-target-language">中文</div>
+              </div>
+            </div>
+            <p class="setup-language-hint">术语表按所选源语言生成，并用于本场同传识别与翻译。</p>
 
-          <label class="setup-label" for="glossary-instruction">一句话说明</label>
-          <input
-            id="glossary-instruction"
-            class="setup-input"
-            type="text"
-            maxlength="300"
-            placeholder="例：工程向分享，术语用大陆常用译法，保持统一"
-          />
-
-          <div class="setup-actions">
-            <button id="btn-generate-glossary" type="button">生成术语表</button>
-            <a id="btn-enter-live" class="setup-enter" href="/">进入同传</a>
+            <div class="setup-actions">
+              <button id="btn-generate-glossary" type="button">生成术语表</button>
+              <a id="btn-enter-live" class="setup-enter" href="/live.html">进入同传</a>
+            </div>
+            <p id="setup-status" class="setup-status">选择源语言后可进入同传；术语表为可选项</p>
           </div>
-          <p id="setup-status" class="setup-status">选择源语言后可进入同传；术语表为可选项</p>
         </section>
 
         <section class="setup-preview-panel">

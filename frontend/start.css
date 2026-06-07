@@ -1,0 +1,81 @@
+.start-app {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #0f1115;
+  color: #e8eaed;
+}
+
+.start-card {
+  width: min(440px, 100%);
+  padding: 36px 32px 28px;
+  border-radius: 16px;
+  background: #171a21;
+  border: 1px solid #2a2f3a;
+  text-align: center;
+}
+
+.start-logo {
+  margin: 0 0 8px;
+  font-size: 1.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.start-tagline {
+  margin: 0 0 28px;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: #9aa0a6;
+}
+
+.start-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.start-btn {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 20px;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 500;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.start-btn-primary {
+  background: #1a73e8;
+  color: #fff;
+  border: 1px solid #1a73e8;
+}
+
+.start-btn-primary:hover {
+  background: #1967d2;
+  border-color: #1967d2;
+}
+
+.start-btn-secondary {
+  background: transparent;
+  color: #8ab4f8;
+  border: 1px solid #3c4043;
+}
+
+.start-btn-secondary:hover {
+  background: #2a2f3a;
+  border-color: #5f6368;
+}
+
+.start-hint {
+  margin: 20px 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: #80868b;
+}
