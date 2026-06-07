@@ -11,8 +11,8 @@ html.metrics-page body {
   height: auto;
   display: flex;
   flex-direction: column;
-  background: #0f1115;
-  color: #e8eaed;
+  background: var(--color-bg);
+  color: var(--color-text);
   overflow: visible;
 }
 
@@ -22,8 +22,9 @@ html.metrics-page body {
   align-items: center;
   gap: 16px;
   padding: 20px 24px;
-  border-bottom: 1px solid #2a2f3a;
-  background: #171a21;
+  border-bottom: 1px solid var(--color-border);
+  background: linear-gradient(180deg, var(--color-bg-elevated) 0%, var(--color-surface) 100%);
+  box-shadow: var(--shadow-sm);
   flex-shrink: 0;
 }
 
@@ -35,7 +36,7 @@ html.metrics-page body {
 .metrics-header .subtitle {
   margin: 4px 0 0;
   font-size: 0.875rem;
-  color: #9aa0a6;
+  color: var(--color-text-muted);
 }
 
 .metrics-header-actions {
@@ -46,24 +47,26 @@ html.metrics-page body {
 
 .metrics-connection {
   font-size: 0.8125rem;
-  color: #9aa0a6;
+  color: var(--color-text-muted);
 }
 
 .metrics-connection.connected {
-  color: #81c995;
+  color: var(--color-success);
 }
 
 .metrics-link {
-  color: #8ab4f8;
+  color: var(--color-accent);
   text-decoration: none;
   font-size: 0.875rem;
   padding: 8px 12px;
-  border-radius: 8px;
-  border: 1px solid #3c4043;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border-strong);
+  cursor: pointer;
 }
 
 .metrics-link:hover {
-  background: #2a2f3a;
+  background: var(--color-surface-hover);
+  border-color: var(--color-accent);
 }
 
 .metrics-main {
@@ -78,24 +81,26 @@ html.metrics-page body {
 .metrics-empty {
   margin: 0;
   padding: 24px;
-  border-radius: 12px;
-  background: #171a21;
-  border: 1px solid #2a2f3a;
-  color: #9aa0a6;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  box-shadow: var(--shadow-sm);
 }
 
 .metrics-panel {
   padding: 18px 20px;
-  border-radius: 12px;
-  background: #171a21;
-  border: 1px solid #2a2f3a;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-sm);
   flex-shrink: 0;
 }
 
 .metrics-section-title {
   margin: 0 0 14px;
   font-size: 0.95rem;
-  color: #bdc1c6;
+  color: var(--color-text-secondary);
 }
 
 .metrics-grid {
@@ -130,15 +135,15 @@ html.metrics-page body {
 
 .metrics-stat {
   padding: 10px 12px;
-  border-radius: 8px;
-  background: #0f1115;
-  border: 1px solid #2a2f3a;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
 }
 
 .metrics-stat-label {
   display: block;
   font-size: 0.75rem;
-  color: #9aa0a6;
+  color: var(--color-text-muted);
   margin-bottom: 4px;
 }
 
@@ -151,9 +156,9 @@ html.metrics-page body {
   max-height: 220px;
   overflow-y: auto;
   overflow-x: auto;
-  border: 1px solid #2a2f3a;
-  border-radius: 8px;
-  background: #0f1115;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
 }
 
 .metrics-table {
@@ -166,16 +171,16 @@ html.metrics-page body {
 .metrics-table td {
   padding: 8px 10px;
   text-align: left;
-  border-bottom: 1px solid #2a2f3a;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .metrics-table thead th {
   position: sticky;
   top: 0;
   z-index: 1;
-  color: #9aa0a6;
+  color: var(--color-text-muted);
   font-weight: 500;
-  background: #171a21;
+  background: var(--color-surface);
 }
 
 .metrics-table td {
@@ -189,7 +194,7 @@ html.metrics-page body {
 .metrics-footnote {
   margin: 0;
   font-size: 0.8125rem;
-  color: #9aa0a6;
+  color: var(--color-text-muted);
   flex-shrink: 0;
 }
 

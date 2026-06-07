@@ -4,31 +4,39 @@
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: #0f1115;
-  color: #e8eaed;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% -10%, rgba(20, 184, 166, 0.12), transparent 55%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(94, 234, 212, 0.06), transparent 50%),
+    var(--color-bg);
+  color: var(--color-text);
 }
 
 .start-card {
   width: min(440px, 100%);
-  padding: 36px 32px 28px;
-  border-radius: 16px;
-  background: #171a21;
-  border: 1px solid #2a2f3a;
+  padding: 40px 36px 32px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(165deg, var(--color-surface) 0%, var(--color-bg-elevated) 100%);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-lg);
   text-align: center;
 }
 
 .start-logo {
-  margin: 0 0 8px;
-  font-size: 1.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+  margin: 0 0 10px;
+  font-size: 1.85rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, var(--color-text) 0%, var(--color-primary) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 .start-tagline {
-  margin: 0 0 28px;
+  margin: 0 0 32px;
   font-size: 0.95rem;
-  line-height: 1.55;
-  color: #9aa0a6;
+  line-height: 1.6;
+  color: var(--color-text-muted);
 }
 
 .start-actions {
@@ -41,41 +49,45 @@
   display: block;
   width: 100%;
   box-sizing: border-box;
-  padding: 12px 20px;
-  border-radius: 10px;
+  padding: 13px 20px;
+  border-radius: var(--radius-md);
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 600;
   text-decoration: none;
   text-align: center;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background var(--transition-base),
+    border-color var(--transition-base),
+    box-shadow var(--transition-base);
 }
 
 .start-btn-primary {
-  background: #1a73e8;
+  background: linear-gradient(180deg, var(--color-cta) 0%, var(--color-cta-hover) 100%);
   color: #fff;
-  border: 1px solid #1a73e8;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 14px rgba(26, 115, 232, 0.35);
 }
 
 .start-btn-primary:hover {
-  background: #1967d2;
-  border-color: #1967d2;
+  box-shadow: 0 6px 20px rgba(26, 115, 232, 0.45);
 }
 
 .start-btn-secondary {
   background: transparent;
-  color: #8ab4f8;
-  border: 1px solid #3c4043;
+  color: var(--color-accent);
+  border: 1px solid var(--color-border);
 }
 
 .start-btn-secondary:hover {
-  background: #2a2f3a;
-  border-color: #5f6368;
+  background: var(--color-surface-hover);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .start-hint {
-  margin: 20px 0 0;
+  margin: 24px 0 0;
   font-size: 0.75rem;
-  line-height: 1.45;
-  color: #80868b;
+  line-height: 1.5;
+  color: var(--color-text-dim);
 }
