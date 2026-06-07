@@ -15,6 +15,7 @@ const btnPause = document.getElementById("btn-pause");
 const btnStop = document.getElementById("btn-stop");
 const btnTts = document.getElementById("btn-tts");
 const btnNewSession = document.getElementById("btn-new-session");
+const btnGlossaryView = document.getElementById("btn-glossary-view");
 const btnHistory = document.getElementById("btn-history");
 const btnHistoryClose = document.getElementById("btn-history-close");
 const historyOverlay = document.getElementById("history-overlay");
@@ -39,6 +40,7 @@ let correctionCount = 0;
 let memoryCount = 0;
 let formattedSentenceCount = 0;
 let pendingInitialSync = true;
+let lastSessionState = null;
 
 const STATUS_LABELS = {
   ready: "就绪",
@@ -75,6 +77,34 @@ function getStoredSourceLanguageLabel() {
   const stored = loadSessionConfig();
   const code = stored?.source_language || "en";
   return SOURCE_LANGUAGE_LABELS[code] || code;
+}
+
+function updateGlossaryViewLink() {
+  if (!btnGlossaryView) {
+    return;
+  }
+  btnGlossaryView.href = isLiveSessionActive() ? "/setup-view.html" : "/setup.html";
+}
+
+function syncLiveSessionFlag(state) {
+  if (state === "speaking" || state === "paused") {
+    markLiveSessionActive();
+  } else if (state === "finished") {
+    clearLiveSessionActive();
+  } else if (state === "ready") {
+    const wasActive =
+      lastSessionState === "speaking" ||
+      lastSessionState === "paused" ||
+      lastSessionState === "finished";
+    if (wasActive) {
+      clearLiveSessionActive();
+      if (window.translationTts) {
+        window.translationTts.stop();
+      }
+    }
+  }
+  lastSessionState = state;
+  updateGlossaryViewLink();
 }
 
 function renderStoredLanguageHint() {
@@ -516,6 +546,7 @@ async function startNewTranslation() {
     sendCommand("stop");
   }
   clearLiveSessionActive();
+  updateGlossaryViewLink();
   window.location.href = "/";
 }
 
@@ -669,10 +700,8 @@ function connect() {
     }
     if (payload.type === "status") {
       setStatus(payload.state, payload.message);
-      if (payload.state === "speaking" || payload.state === "paused") {
-        markLiveSessionActive();
-      } else if (payload.state === "ready" || payload.state === "finished") {
-        clearLiveSessionActive();
+      syncLiveSessionFlag(payload.state);
+      if (payload.state === "finished") {
         if (window.translationTts) {
           window.translationTts.stop();
         }
@@ -818,6 +847,8 @@ resetSummary();
 updateTtsButton();
 setAudioRouteEditing(true);
 renderStoredLanguageHint();
+markLiveSessionActive();
+updateGlossaryViewLink();
 loadAudioDevices();
 if (window.translationTts) {
   window.translationTts.setCaptureControl(sendCaptureSuppress);

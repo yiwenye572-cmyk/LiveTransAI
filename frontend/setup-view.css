@@ -1,0 +1,95 @@
+.setup-view-page {
+  user-select: text;
+}
+
+.setup-view-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: none;
+  background: #8ab4f8;
+  color: #0f1115;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.setup-view-back:hover {
+  background: #aecbfa;
+}
+
+.setup-view-scenarios {
+  pointer-events: none;
+}
+
+.setup-scenario-card {
+  cursor: default;
+}
+
+.setup-scenario-card.is-inactive {
+  background: #23262d;
+  border-color: #3c4043;
+  color: #80868b;
+  opacity: 0.72;
+}
+
+.setup-scenario-card.is-inactive .setup-accordion-tab-title,
+.setup-scenario-card.is-inactive .setup-accordion-tab-desc {
+  color: #80868b;
+}
+
+.setup-scenario-card.is-inactive .setup-accordion-tab-meta {
+  color: #80868b;
+  background: rgba(128, 134, 139, 0.12);
+}
+
+.setup-scenario-card.is-selected {
+  border-color: #8ab4f8;
+  background: #1e3a5f;
+  color: #e8eaed;
+  box-shadow: inset 2px 0 0 #8ab4f8;
+  opacity: 1;
+}
+
+.setup-view-pregen-badge {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: #9aa0a6;
+}
+
+.setup-view-pregen-badge.is-loaded {
+  color: #bdc1c6;
+}
+
+.setup-view-detail {
+  cursor: default;
+}
+
+.setup-view-detail p {
+  margin: 0;
+}
+
+.setup-view-fields {
+  display: block !important;
+}
+
+.setup-static-field {
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #3c4043;
+  background: #23262d;
+  color: #bdc1c6;
+  font-size: 0.875rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.setup-view-footer-status {
+  margin: 12px 0 0;
+  font-size: 0.75rem;
+  color: #9aa0a6;
+  line-height: 1.4;
+}
