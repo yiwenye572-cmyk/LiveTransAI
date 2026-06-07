@@ -11,9 +11,15 @@ const setupHeaderSubtitle = document.querySelector(".setup-header .subtitle");
 const sourceLanguageSelect = document.getElementById("source-language-select");
 const targetLanguageLabel = document.getElementById("target-language-label");
 const btnEnterLive = document.getElementById("btn-enter-live");
+const setupDemoPanel = document.getElementById("setup-demo-panel");
+const setupDemoGrid = document.getElementById("setup-demo-grid");
+const setupDemoLoadPregen = document.getElementById("setup-demo-load-pregen");
 
 const params = new URLSearchParams(window.location.search);
 const isViewMode = params.get("mode") === "view" || isLiveSessionActive();
+
+let selectedDemoScenarioId = null;
+let demoScenarioLoading = false;
 
 function setStatus(message, isError = false) {
   setupStatus.textContent = message;
@@ -65,10 +71,111 @@ function applyViewModeUi() {
   if (sourceLanguageSelect) {
     sourceLanguageSelect.disabled = true;
   }
+  if (setupDemoPanel) {
+    setupDemoPanel.hidden = true;
+  }
   setupHeaderAction.textContent = "返回同传";
   setupHeaderAction.href = "/";
   setupHeaderSubtitle.textContent = "本场会话配置（只读），查看后可返回当前同传会话";
   setupFormPanel.querySelector(".setup-actions").hidden = true;
+}
+
+function setSelectedDemoCard(scenarioId) {
+  selectedDemoScenarioId = scenarioId;
+  if (!setupDemoGrid) {
+    return;
+  }
+  for (const card of setupDemoGrid.querySelectorAll(".setup-demo-card")) {
+    card.classList.toggle("is-selected", card.dataset.scenarioId === scenarioId);
+  }
+}
+
+function renderDemoCards() {
+  if (!setupDemoGrid || !Array.isArray(DEMO_SCENARIOS)) {
+    return;
+  }
+
+  setupDemoGrid.innerHTML = "";
+  for (const scenario of DEMO_SCENARIOS) {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "setup-demo-card";
+    card.dataset.scenarioId = scenario.id;
+    card.setAttribute("role", "option");
+    card.innerHTML = `
+      <p class="setup-demo-card-title">${escapeHtml(scenario.label)}</p>
+      <p class="setup-demo-card-desc">${escapeHtml(scenario.description || scenario.scenario)}</p>
+      <span class="setup-demo-card-meta">${scenario.termCountHint || 0} 条预置术语</span>
+    `;
+    card.addEventListener("click", () => {
+      applyDemoScenario(scenario);
+    });
+    setupDemoGrid.appendChild(card);
+  }
+}
+
+function syncSelectedDemoFromStorage(stored) {
+  if (!stored?.scenario || !Array.isArray(DEMO_SCENARIOS)) {
+    return;
+  }
+  const match = DEMO_SCENARIOS.find((item) => item.scenario === stored.scenario);
+  if (match) {
+    setSelectedDemoCard(match.id);
+  }
+}
+
+async function loadPregenGlossary(scenarioDef) {
+  const response = await fetch(scenarioDef.glossaryUrl);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+  const payload = await response.json();
+  const termMap = payload?.term_map || {};
+  if (!termMap || Object.keys(termMap).length === 0) {
+    throw new Error("预置术语为空");
+  }
+
+  const sourceLanguage = scenarioDef.source_language || getStoredSourceLanguage();
+  saveSessionConfig({
+    ...payload,
+    scenario: scenarioDef.scenario,
+    instruction: scenarioDef.instruction,
+    source_language: sourceLanguage,
+  });
+  renderPreview(payload);
+  return Object.keys(termMap).length;
+}
+
+async function applyDemoScenario(scenarioDef) {
+  if (isViewMode || demoScenarioLoading) {
+    return;
+  }
+
+  scenarioInput.value = scenarioDef.scenario;
+  instructionInput.value = scenarioDef.instruction;
+  setSelectedDemoCard(scenarioDef.id);
+
+  if (sourceLanguageSelect && scenarioDef.source_language) {
+    sourceLanguageSelect.value = scenarioDef.source_language;
+    persistLanguageSelection();
+  }
+
+  const loadPregen = setupDemoLoadPregen?.checked !== false;
+  if (!loadPregen) {
+    setStatus(`已填入「${scenarioDef.label}」场景描述，可生成术语表或进入同传。`);
+    return;
+  }
+
+  demoScenarioLoading = true;
+  setStatus(`正在加载「${scenarioDef.label}」预置术语…`);
+  try {
+    const count = await loadPregenGlossary(scenarioDef);
+    setStatus(`已加载「${scenarioDef.label}」预置术语，共 ${count} 条，可进入同传。`);
+  } catch (error) {
+    setStatus(`预置术语加载失败：${error.message}。已填入场景描述。`, true);
+  } finally {
+    demoScenarioLoading = false;
+  }
 }
 
 function restoreFormFromStorage() {
@@ -90,6 +197,7 @@ function restoreFormFromStorage() {
   }
   if (stored.term_map && Object.keys(stored.term_map).length > 0) {
     renderPreview(stored);
+    syncSelectedDemoFromStorage(stored);
     if (isViewMode) {
       const sourceLabel =
         sourceLanguageSelect?.selectedOptions?.[0]?.textContent || stored.source_language;
@@ -192,6 +300,9 @@ if (btnEnterLive) {
 }
 
 applyViewModeUi();
+if (!isViewMode) {
+  renderDemoCards();
+}
 btnGenerate.addEventListener("click", generateGlossary);
 loadLanguages().then(() => {
   restoreFormFromStorage();

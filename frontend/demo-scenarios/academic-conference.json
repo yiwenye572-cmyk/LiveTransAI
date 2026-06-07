@@ -1,0 +1,41 @@
+{
+  "scenario": "国际 AI 学术会议",
+  "instruction": "论文报告与 Q&A，术语用大陆学术常用译法，保持严谨统一",
+  "tone_hint": "学术报告风格，术语严谨统一，避免口语化",
+  "term_map": {
+    "federated learning": "联邦学习",
+    "ablation study": "消融实验",
+    "benchmark": "基准测试",
+    "peer review": "同行评审",
+    "poster session": "海报展示环节",
+    "keynote": "主题演讲",
+    "hypothesis": "假设",
+    "methodology": "方法论",
+    "dataset": "数据集",
+    "preprint": "预印本",
+    "reproducibility": "可复现性",
+    "neural network": "神经网络",
+    "transformer": "Transformer 模型",
+    "latent space": "潜空间",
+    "convergence": "收敛",
+    "empirical results": "实证结果",
+    "state of the art": "当前最优水平",
+    "generalization": "泛化"
+  },
+  "term_count": 18,
+  "hot_words_list": [
+    "federated learning",
+    "ablation study",
+    "benchmark",
+    "peer review",
+    "poster session",
+    "reproducibility",
+    "neural network",
+    "transformer",
+    "latent space",
+    "state of the art",
+    "generalization",
+    "methodology",
+    "empirical results"
+  ]
+}
