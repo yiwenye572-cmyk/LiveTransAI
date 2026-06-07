@@ -28,18 +28,19 @@
   align-items: center;
   gap: 4px;
   padding: 8px 14px;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   border: none;
-  background: #8ab4f8;
-  color: #0f1115;
+  background: linear-gradient(180deg, var(--color-cta) 0%, var(--color-cta-hover) 100%);
+  color: #fff;
   font-size: 0.875rem;
   font-weight: 600;
   text-decoration: none;
   white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(26, 115, 232, 0.3);
 }
 
 .setup-view-back:hover {
-  background: #aecbfa;
+  box-shadow: 0 6px 18px rgba(26, 115, 232, 0.4);
 }
 
 .setup-view-scenarios {
@@ -67,9 +68,9 @@
 }
 
 .setup-scenario-card.is-selected {
-  border-color: #8ab4f8;
-  color: #e8eaed;
-  box-shadow: inset 2px 0 0 #8ab4f8;
+  border-color: var(--color-accent);
+  color: var(--color-text);
+  box-shadow: inset 2px 0 0 var(--color-accent);
   opacity: 1;
 }
 
