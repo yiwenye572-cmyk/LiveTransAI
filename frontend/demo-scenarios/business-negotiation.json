@@ -1,0 +1,40 @@
+{
+  "scenario": "跨国商务洽谈",
+  "instruction": "合同与报价讨论，用语正式简洁，采用大陆商务常用译法",
+  "tone_hint": "正式商务口吻，简洁准确，避免歧义",
+  "term_map": {
+    "ROI": "投资回报率",
+    "deliverables": "交付成果",
+    "MOQ": "最小起订量",
+    "stakeholders": "利益相关方",
+    "term sheet": "条款清单",
+    "due diligence": "尽职调查",
+    "milestone": "里程碑",
+    "procurement": "采购",
+    "quotation": "报价",
+    "payment terms": "付款条款",
+    "exclusive rights": "独家权利",
+    "partnership": "合作伙伴关系",
+    "revenue share": "收入分成",
+    "compliance": "合规",
+    "liability": "责任",
+    "negotiation": "谈判",
+    "closing the deal": "成交",
+    "non-disclosure agreement": "保密协议"
+  },
+  "term_count": 18,
+  "hot_words_list": [
+    "ROI",
+    "deliverables",
+    "MOQ",
+    "stakeholders",
+    "term sheet",
+    "due diligence",
+    "payment terms",
+    "exclusive rights",
+    "revenue share",
+    "non-disclosure agreement",
+    "closing the deal",
+    "procurement"
+  ]
+}

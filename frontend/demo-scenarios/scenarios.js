@@ -1,0 +1,32 @@
+const DEMO_SCENARIOS = [
+  {
+    id: "academic",
+    label: "学术会议",
+    description: "论文报告 · 学术严谨译法",
+    scenario: "国际 AI 学术会议",
+    instruction: "论文报告与 Q&A，术语用大陆学术常用译法，保持严谨统一",
+    source_language: "en",
+    glossaryUrl: "/demo-scenarios/academic-conference.json",
+    termCountHint: 18,
+  },
+  {
+    id: "business",
+    label: "商务洽谈",
+    description: "合同报价 · 正式商务口吻",
+    scenario: "跨国商务洽谈",
+    instruction: "合同与报价讨论，用语正式简洁，采用大陆商务常用译法",
+    source_language: "en",
+    glossaryUrl: "/demo-scenarios/business-negotiation.json",
+    termCountHint: 18,
+  },
+  {
+    id: "online-course",
+    label: "网课",
+    description: "在线课程 · 通俗易懂",
+    scenario: "英语在线课程",
+    instruction: "计算机或通识课程讲解，术语通俗易懂，适合自学跟听",
+    source_language: "en",
+    glossaryUrl: "/demo-scenarios/online-course.json",
+    termCountHint: 18,
+  },
+];

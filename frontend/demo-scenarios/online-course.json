@@ -1,0 +1,39 @@
+{
+  "scenario": "英语在线课程",
+  "instruction": "计算机或通识课程讲解，术语通俗易懂，适合自学跟听",
+  "tone_hint": "教学讲解风格，术语通俗，句子清晰易懂",
+  "term_map": {
+    "deep learning": "深度学习",
+    "assignment": "作业",
+    "syllabus": "教学大纲",
+    "office hours": "答疑时间",
+    "quiz": "小测验",
+    "module": "模块",
+    "lecture": "讲座",
+    "enrollment": "选课注册",
+    "coursework": "课程作业",
+    "grading rubric": "评分标准",
+    "learning objective": "学习目标",
+    "prerequisite": "先修要求",
+    "discussion board": "讨论区",
+    "tutorial": "辅导课",
+    "homework": "家庭作业",
+    "deadline": "截止日期",
+    "certification": "证书",
+    "cohort": "同期学员"
+  },
+  "term_count": 18,
+  "hot_words_list": [
+    "deep learning",
+    "assignment",
+    "syllabus",
+    "office hours",
+    "grading rubric",
+    "learning objective",
+    "prerequisite",
+    "discussion board",
+    "coursework",
+    "enrollment",
+    "certification"
+  ]
+}
