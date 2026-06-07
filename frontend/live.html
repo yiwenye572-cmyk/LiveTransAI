@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>同声传译 · LiveTransAI</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div>
+          <h1>LiveTransAI</h1>
+          <p class="subtitle" id="app-subtitle">AI 同声传译助手</p>
+        </div>
+        <div id="status-badge" class="status-badge status-ready">就绪</div>
+        <a id="btn-glossary-view" class="header-link" href="/setup.html?mode=view">会话配置</a>
+        <a class="header-link" href="/metrics.html">指标检测</a>
+        <button id="btn-new-session" type="button" class="btn-history">开始新翻译</button>
+        <button id="btn-history" type="button" class="btn-history">历史</button>
+      </header>
+
+      <main class="main-grid">
+        <aside class="left-column">
+          <section id="summary-panel" class="summary-panel">
+            <div class="summary-header">
+              <h2>会话摘要</h2>
+              <span id="summary-meta" class="summary-meta">等待更新…</span>
+            </div>
+            <div id="summary-topic" class="summary-topic">主题：—</div>
+            <div class="summary-scroll">
+              <div id="summary-terms" class="summary-terms"></div>
+              <ul id="summary-bullets" class="summary-bullets"></ul>
+            </div>
+          </section>
+
+          <section id="formatted-panel" class="formatted-panel">
+            <div class="formatted-header">
+              <h2>规整译文</h2>
+              <span id="formatted-meta" class="formatted-meta">等待纠错批次…</span>
+            </div>
+            <div id="formatted-content" class="formatted-content">
+              <div class="empty-state">纠错批次完成后，规整段落将在此追加</div>
+            </div>
+          </section>
+        </aside>
+
+        <section id="subtitle-list" class="subtitle-list"></section>
+      </main>
+
+      <footer class="footer">
+        <section id="audio-route-panel" class="audio-route-panel">
+          <div id="audio-route-controls" class="audio-route-controls">
+            <label class="audio-route-field">
+              <span class="audio-route-label">监听设备</span>
+              <select id="loopback-select" class="audio-route-select"></select>
+            </label>
+            <label class="audio-route-field">
+              <span class="audio-route-label">译文输出</span>
+              <select id="tts-output-select" class="audio-route-select"></select>
+            </label>
+          </div>
+          <p id="audio-route-status" class="audio-route-status hidden"></p>
+          <p id="audio-route-hint" class="audio-route-hint"></p>
+        </section>
+        <div id="metrics-bar" class="metrics-bar">已翻译: 0 句</div>
+        <div class="controls">
+          <button id="btn-tts" type="button" class="btn-tts" aria-pressed="false" title="播放豆包同声传译中文语音">语音关</button>
+          <button id="btn-start" type="button">开始翻译</button>
+          <button id="btn-pause" type="button" disabled>暂停</button>
+          <button id="btn-stop" type="button" disabled>停止</button>
+        </div>
+      </footer>
+    </div>
+
+    <div id="history-overlay" class="history-overlay hidden" aria-hidden="true">
+      <div class="history-panel">
+        <div class="history-header">
+          <h2>历史会话</h2>
+          <button id="btn-history-close" type="button" class="btn-history-close">关闭</button>
+        </div>
+        <div class="history-body">
+          <aside id="history-list" class="history-list">
+            <div class="empty-state">加载中…</div>
+          </aside>
+          <section id="history-detail" class="history-detail">
+            <div class="empty-state">选择一条历史记录查看详情</div>
+          </section>
+        </div>
+      </div>
+    </div>
+    <script src="/glossary.js"></script>
+    <script src="/tts.js"></script>
+    <script src="/app.js"></script>
+  </body>
+</html>

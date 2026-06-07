@@ -96,7 +96,7 @@ function applyViewModeUi() {
     setupGlossaryBlock.hidden = true;
   }
   setupHeaderAction.textContent = "返回同传";
-  setupHeaderAction.href = "/";
+  setupHeaderAction.href = "/live.html";
   setupHeaderSubtitle.textContent = "本场会话配置（只读），查看后可返回当前同传会话";
   setupFormPanel.querySelector(".setup-actions").hidden = true;
 }

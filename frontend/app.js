@@ -508,7 +508,7 @@ function closeHistoryPanel() {
   historyOverlay.setAttribute("aria-hidden", "true");
 }
 
-async function returnToSetupForNewSession() {
+async function startNewTranslation() {
   btnNewSession.disabled = true;
   try {
     await fetch("/api/session/stop", { method: "POST" });
@@ -516,7 +516,7 @@ async function returnToSetupForNewSession() {
     sendCommand("stop");
   }
   clearLiveSessionActive();
-  window.location.href = "/setup.html";
+  window.location.href = "/";
 }
 
 async function loadHistoryList() {
@@ -802,7 +802,7 @@ if (ttsOutputSelect) {
   ttsOutputSelect.addEventListener("change", persistAudioSelections);
 }
 btnNewSession.addEventListener("click", () => {
-  returnToSetupForNewSession();
+  startNewTranslation();
 });
 btnHistory.addEventListener("click", openHistoryPanel);
 btnHistoryClose.addEventListener("click", closeHistoryPanel);

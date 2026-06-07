@@ -82,27 +82,32 @@ Start the backend server:
 python -m backend.main
 ```
 
-Open the browser:
+Open the browser at the landing page:
 
 ```text
-http://127.0.0.1:8765
+http://127.0.0.1:8765/
 ```
 
-Click **开始翻译**, then play English audio on your computer. Subtitles should appear in the page in real time.
+From there:
+
+- **配置会话** → `/setup.html` (optional glossary and scenario)
+- **直接进入同传** → `/live.html`
+
+On the live page, click **开始翻译**, then play English audio on your computer. Subtitles should appear in real time.
 
 If you generate a glossary on `/setup.html` before starting, the same bundle is sent to Doubao AST at session start (`corpus.hot_words_list` for source recognition and `corpus.glossary_list` for translation hints) and to DeepSeek correction prompts (`static_glossary`).
 
 ### Demo Scenarios (答辩预设)
 
-Open the setup page before a live session:
+Recommended demo flow (under 30 seconds):
 
-```text
-http://127.0.0.1:8765/setup.html
-```
+1. Open `http://127.0.0.1:8765/` → **配置会话**
+2. On `/setup.html`, click the **网课** tab (default on first visit) → **进入同传**
+3. On `/live.html`, click **开始翻译** → play English course audio
 
 Four built-in scenarios are available as an accordion: **通用场景**, **学术会议**, **商务洽谈**, and **网课**. Click a tab to expand it; the description box below updates with template details. With **一并加载预置术语** checked (default for the three preset scenarios), pre-generated glossary JSON loads instantly without calling the LLM. **通用场景** has no preset JSON—fill the scenario fields and use **生成术语表**, or enter live without a glossary.
 
-Recommended demo flow (under 30 seconds): setup page → **网课** tab (default on first visit) → **进入同传** → **开始翻译** → play English course audio.
+Quick path: landing page → **直接进入同传** → **开始翻译** (no glossary required).
 
 ### Pause / Resume / Stop
 
