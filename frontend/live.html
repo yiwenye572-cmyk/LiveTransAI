@@ -53,15 +53,25 @@
 
         <section class="subtitle-panel">
           <div class="subtitle-panel-toolbar">
-            <button
-              id="btn-subtitle-focus"
-              type="button"
-              class="btn-subtitle-focus"
-              aria-pressed="false"
-              title="隐藏摘要与控制区，放大字幕"
-            >
-              专注字幕
-            </button>
+            <div class="subtitle-panel-toolbar-actions">
+              <button
+                id="btn-subtitle-settings"
+                type="button"
+                class="btn-subtitle-settings hidden"
+                title="专注模式字幕显示设置"
+              >
+                设置
+              </button>
+              <button
+                id="btn-subtitle-focus"
+                type="button"
+                class="btn-subtitle-focus"
+                aria-pressed="false"
+                title="隐藏摘要与控制区，放大字幕"
+              >
+                专注字幕
+              </button>
+            </div>
           </div>
           <div id="subtitle-metrics-bar" class="subtitle-metrics-bar hidden">已翻译: 0 句</div>
           <div id="subtitle-list" class="subtitle-list"></div>
@@ -94,6 +104,55 @@
           <button id="btn-stop" type="button" class="btn-secondary" disabled>停止</button>
         </div>
       </footer>
+    </div>
+
+    <div id="subtitle-settings-overlay" class="subtitle-settings-overlay hidden" aria-hidden="true">
+      <div class="subtitle-settings-panel">
+        <div class="subtitle-settings-header">
+          <h2>字幕设置</h2>
+          <button id="btn-subtitle-settings-close" type="button" class="btn-subtitle-settings-close">
+            关闭
+          </button>
+        </div>
+        <form id="subtitle-settings-form" class="subtitle-settings-form">
+          <label class="subtitle-settings-field">
+            <span class="subtitle-settings-label">字幕字号</span>
+            <select id="focus-settings-font-size" class="subtitle-settings-select">
+              <option value="small">小</option>
+              <option value="medium" selected>中</option>
+              <option value="large">大</option>
+            </select>
+          </label>
+          <label class="subtitle-settings-field subtitle-settings-check">
+            <input id="focus-settings-show-source" type="checkbox" checked />
+            <span>显示原文</span>
+          </label>
+          <label class="subtitle-settings-field subtitle-settings-check">
+            <input id="focus-settings-show-translation" type="checkbox" checked />
+            <span>显示译文</span>
+          </label>
+          <label class="subtitle-settings-field subtitle-settings-check">
+            <input id="focus-settings-show-correction" type="checkbox" checked />
+            <span>显示纠错</span>
+          </label>
+          <label class="subtitle-settings-field">
+            <span class="subtitle-settings-label">显示条数</span>
+            <select id="focus-settings-visible-count" class="subtitle-settings-select">
+              <option value="1">1 条</option>
+              <option value="3">3 条</option>
+              <option value="5" selected>5 条</option>
+              <option value="10">10 条</option>
+              <option value="0">全部</option>
+            </select>
+          </label>
+          <p id="focus-settings-error" class="subtitle-settings-error hidden"></p>
+          <div class="subtitle-settings-actions">
+            <button id="btn-subtitle-settings-apply" type="submit" class="btn-subtitle-settings-apply">
+              应用
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
 
     <div id="history-overlay" class="history-overlay hidden" aria-hidden="true">

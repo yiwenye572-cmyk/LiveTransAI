@@ -33,11 +33,32 @@ const audioRouteHint = document.getElementById("audio-route-hint");
 const LOOPBACK_STORAGE_KEY = "livetransai-loopback-index";
 const TTS_OUTPUT_STORAGE_KEY = "livetransai-tts-output-id";
 const SUBTITLE_FOCUS_KEY = "livetransai_subtitle_focus";
+const FOCUS_SETTINGS_KEY = "livetransai_focus_subtitle_settings";
+const DEFAULT_FOCUS_SETTINGS = {
+  fontSize: "medium",
+  showSource: true,
+  showTranslation: true,
+  showCorrection: true,
+  visibleCount: 5,
+};
 
 const appRoot = document.querySelector(".app");
 const btnSubtitleFocus = document.getElementById("btn-subtitle-focus");
+const btnSubtitleSettings = document.getElementById("btn-subtitle-settings");
+const btnSubtitleSettingsClose = document.getElementById("btn-subtitle-settings-close");
+const btnSubtitleSettingsApply = document.getElementById("btn-subtitle-settings-apply");
+const subtitleSettingsOverlay = document.getElementById("subtitle-settings-overlay");
+const subtitleSettingsForm = document.getElementById("subtitle-settings-form");
+const focusSettingsFontSize = document.getElementById("focus-settings-font-size");
+const focusSettingsShowSource = document.getElementById("focus-settings-show-source");
+const focusSettingsShowTranslation = document.getElementById("focus-settings-show-translation");
+const focusSettingsShowCorrection = document.getElementById("focus-settings-show-correction");
+const focusSettingsVisibleCount = document.getElementById("focus-settings-visible-count");
+const focusSettingsError = document.getElementById("focus-settings-error");
 
 let subtitleFocusMode = false;
+let focusSubtitleSettings = { ...DEFAULT_FOCUS_SETTINGS };
+let subtitleBuffer = [];
 
 let selectedHistoryId = null;
 let audioDevicesLoaded = false;
@@ -328,6 +349,7 @@ function resetUiForFreshSession() {
   if (window.translationTts) {
     window.translationTts.stop();
   }
+  subtitleBuffer = [];
   subtitleList.innerHTML = "";
   renderEmptySubtitleState();
   renderEmptyFormattedState();
@@ -339,15 +361,22 @@ function resetUiForFreshSession() {
 }
 
 function restoreSessionSync(payload) {
+  subtitleBuffer = [];
   subtitleList.innerHTML = "";
   const subtitles = payload.subtitles || [];
   if (subtitles.length === 0) {
     renderEmptySubtitleState();
   } else {
     for (const item of subtitles) {
-      appendSubtitle(item);
+      subtitleBuffer.push(normalizeSubtitlePayload(item));
     }
-    refreshSubtitleLiveHighlight();
+    if (subtitleFocusMode) {
+      renderVisibleSubtitles();
+    } else {
+      for (const item of subtitles) {
+        appendSubtitleToDom(item);
+      }
+    }
   }
 
   if (payload.summary) {
@@ -402,10 +431,11 @@ function getSubtitleTag(payload) {
   return isCorrectedSubtitle(payload) ? "corrected" : payload.confidence || "fast";
 }
 
-function buildSubtitleTranslationHtml(payload) {
+function buildSubtitleTranslationHtml(payload, options = {}) {
+  const showCorrection = options.showCorrection !== false;
   const oldTranslation = payload.old_translation || "";
   const newTranslation = payload.new_translation || payload.translation || "";
-  if (oldTranslation) {
+  if (showCorrection && oldTranslation) {
     const reasonHtml = payload.reason
       ? `<div class="correction-reason">修正：${escapeHtml(payload.reason)}</div>`
       : "";
@@ -422,9 +452,10 @@ function getSubtitleSourceFromItem(item) {
   return sourceEl.textContent.replace(/^EN\s*/, "").trim();
 }
 
-function mountSubtitleItem(item, payload) {
+function mountSubtitleItem(item, payload, options = {}) {
   const subtitleId = payload.id || payload.target_id || "";
   const version = payload.new_version || payload.version || 1;
+  const showCorrection = options.showCorrection !== false;
   item.className = "subtitle-item";
   if (isCorrectedSubtitle(payload)) {
     item.classList.add("subtitle-corrected");
@@ -437,11 +468,32 @@ function mountSubtitleItem(item, payload) {
       <span class="subtitle-tag">${escapeHtml(getSubtitleTag(payload))}</span>
     </div>
     <div class="subtitle-source">EN ${escapeHtml(payload.source || "")}</div>
-    <div class="subtitle-translation">${buildSubtitleTranslationHtml(payload)}</div>
+    <div class="subtitle-translation">${buildSubtitleTranslationHtml(payload, { showCorrection })}</div>
   `;
 }
 
-function appendSubtitle(payload) {
+function normalizeSubtitlePayload(payload) {
+  return {
+    id: payload.id || payload.target_id || "",
+    version: payload.new_version || payload.version || 1,
+    source: payload.source || "",
+    translation: payload.translation || payload.new_translation || "",
+    old_translation: payload.old_translation || "",
+    new_translation: payload.new_translation || payload.translation || "",
+    reason: payload.reason || "",
+    confidence: payload.confidence || "fast",
+  };
+}
+
+function getVisibleBufferSlice() {
+  const count = Number(focusSubtitleSettings.visibleCount) || 0;
+  if (count <= 0) {
+    return subtitleBuffer.slice();
+  }
+  return subtitleBuffer.slice(-count);
+}
+
+function appendSubtitleToDom(payload) {
   const empty = subtitleList.querySelector(".empty-state");
   if (empty) {
     empty.remove();
@@ -454,7 +506,84 @@ function appendSubtitle(payload) {
   subtitleList.scrollTop = subtitleList.scrollHeight;
 }
 
+function renderAllSubtitlesToDom() {
+  subtitleList.innerHTML = "";
+  if (subtitleBuffer.length === 0) {
+    renderEmptySubtitleState();
+    return;
+  }
+  for (const payload of subtitleBuffer) {
+    const item = document.createElement("article");
+    mountSubtitleItem(item, payload);
+    subtitleList.appendChild(item);
+  }
+  refreshSubtitleLiveHighlight();
+  subtitleList.scrollTop = subtitleList.scrollHeight;
+}
+
+function renderVisibleSubtitles() {
+  if (!subtitleFocusMode) {
+    return;
+  }
+
+  const visible = getVisibleBufferSlice();
+  subtitleList.innerHTML = "";
+  if (visible.length === 0) {
+    renderEmptySubtitleState();
+    return;
+  }
+
+  for (const payload of visible) {
+    const item = document.createElement("article");
+    mountSubtitleItem(item, payload, {
+      showCorrection: focusSubtitleSettings.showCorrection,
+    });
+    subtitleList.appendChild(item);
+  }
+  refreshSubtitleLiveHighlight();
+  subtitleList.scrollTop = subtitleList.scrollHeight;
+}
+
+function updateSubtitleBufferCorrection(payload) {
+  const targetId = payload.target_id;
+  const index = subtitleBuffer.findIndex((entry) => entry.id === targetId);
+  if (index === -1) {
+    return false;
+  }
+  if (String(subtitleBuffer[index].version) !== String(payload.base_version)) {
+    return false;
+  }
+
+  subtitleBuffer[index] = {
+    ...subtitleBuffer[index],
+    version: payload.new_version,
+    old_translation: payload.old_translation,
+    new_translation: payload.new_translation,
+    translation: payload.new_translation,
+    reason: payload.reason,
+    confidence: "corrected",
+  };
+  return true;
+}
+
+function appendSubtitle(payload) {
+  subtitleBuffer.push(normalizeSubtitlePayload(payload));
+  if (subtitleFocusMode) {
+    renderVisibleSubtitles();
+  } else {
+    appendSubtitleToDom(payload);
+  }
+}
+
 function applyCorrection(payload) {
+  const updated = updateSubtitleBufferCorrection(payload);
+  if (subtitleFocusMode) {
+    if (updated) {
+      renderVisibleSubtitles();
+    }
+    return;
+  }
+
   const item = subtitleList.querySelector(`[data-id="${payload.target_id}"]`);
   if (!item) {
     return;
@@ -639,6 +768,115 @@ function closeHistoryPanel() {
   historyOverlay.setAttribute("aria-hidden", "true");
 }
 
+function loadFocusSubtitleSettings() {
+  try {
+    const raw = localStorage.getItem(FOCUS_SETTINGS_KEY);
+    if (!raw) {
+      focusSubtitleSettings = { ...DEFAULT_FOCUS_SETTINGS };
+      return;
+    }
+    const parsed = JSON.parse(raw);
+    focusSubtitleSettings = {
+      ...DEFAULT_FOCUS_SETTINGS,
+      ...parsed,
+    };
+  } catch {
+    focusSubtitleSettings = { ...DEFAULT_FOCUS_SETTINGS };
+  }
+}
+
+function saveFocusSubtitleSettings() {
+  try {
+    localStorage.setItem(FOCUS_SETTINGS_KEY, JSON.stringify(focusSubtitleSettings));
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function syncFocusSettingsForm() {
+  if (focusSettingsFontSize) {
+    focusSettingsFontSize.value = focusSubtitleSettings.fontSize;
+  }
+  if (focusSettingsShowSource) {
+    focusSettingsShowSource.checked = focusSubtitleSettings.showSource;
+  }
+  if (focusSettingsShowTranslation) {
+    focusSettingsShowTranslation.checked = focusSubtitleSettings.showTranslation;
+  }
+  if (focusSettingsShowCorrection) {
+    focusSettingsShowCorrection.checked = focusSubtitleSettings.showCorrection;
+  }
+  if (focusSettingsVisibleCount) {
+    focusSettingsVisibleCount.value = String(focusSubtitleSettings.visibleCount);
+  }
+  if (focusSettingsError) {
+    focusSettingsError.classList.add("hidden");
+    focusSettingsError.textContent = "";
+  }
+}
+
+function readFocusSettingsForm() {
+  return {
+    fontSize: focusSettingsFontSize?.value || DEFAULT_FOCUS_SETTINGS.fontSize,
+    showSource: Boolean(focusSettingsShowSource?.checked),
+    showTranslation: Boolean(focusSettingsShowTranslation?.checked),
+    showCorrection: Boolean(focusSettingsShowCorrection?.checked),
+    visibleCount: Number(focusSettingsVisibleCount?.value ?? DEFAULT_FOCUS_SETTINGS.visibleCount),
+  };
+}
+
+function applyFocusSubtitleSettings() {
+  if (!appRoot) {
+    return;
+  }
+
+  appRoot.dataset.focusFont = focusSubtitleSettings.fontSize;
+  appRoot.dataset.focusShowSource = focusSubtitleSettings.showSource ? "true" : "false";
+  appRoot.dataset.focusShowTranslation = focusSubtitleSettings.showTranslation ? "true" : "false";
+
+  if (subtitleFocusMode) {
+    renderVisibleSubtitles();
+  }
+}
+
+function openSubtitleSettingsPanel() {
+  if (!subtitleSettingsOverlay) {
+    return;
+  }
+  syncFocusSettingsForm();
+  subtitleSettingsOverlay.classList.remove("hidden");
+  subtitleSettingsOverlay.setAttribute("aria-hidden", "false");
+}
+
+function closeSubtitleSettingsPanel() {
+  if (!subtitleSettingsOverlay) {
+    return;
+  }
+  subtitleSettingsOverlay.classList.add("hidden");
+  subtitleSettingsOverlay.setAttribute("aria-hidden", "true");
+  if (focusSettingsError) {
+    focusSettingsError.classList.add("hidden");
+    focusSettingsError.textContent = "";
+  }
+}
+
+function handleSubtitleSettingsSubmit(event) {
+  event.preventDefault();
+  const next = readFocusSettingsForm();
+  if (!next.showSource && !next.showTranslation) {
+    if (focusSettingsError) {
+      focusSettingsError.textContent = "原文与译文至少显示一项";
+      focusSettingsError.classList.remove("hidden");
+    }
+    return;
+  }
+
+  focusSubtitleSettings = next;
+  saveFocusSubtitleSettings();
+  applyFocusSubtitleSettings();
+  closeSubtitleSettingsPanel();
+}
+
 function setSubtitleFocusMode(enabled) {
   subtitleFocusMode = Boolean(enabled);
   if (appRoot) {
@@ -651,6 +889,9 @@ function setSubtitleFocusMode(enabled) {
       ? "恢复完整界面"
       : "隐藏摘要与控制区，放大字幕";
   }
+  if (btnSubtitleSettings) {
+    btnSubtitleSettings.classList.toggle("hidden", !subtitleFocusMode);
+  }
   try {
     if (subtitleFocusMode) {
       sessionStorage.setItem(SUBTITLE_FOCUS_KEY, "1");
@@ -660,6 +901,14 @@ function setSubtitleFocusMode(enabled) {
   } catch {
     // ignore storage errors
   }
+
+  if (subtitleFocusMode) {
+    applyFocusSubtitleSettings();
+    renderVisibleSubtitles();
+  } else {
+    closeSubtitleSettingsPanel();
+    renderAllSubtitlesToDom();
+  }
 }
 
 function toggleSubtitleFocusMode() {
@@ -667,6 +916,8 @@ function toggleSubtitleFocusMode() {
 }
 
 function initSubtitleFocusMode() {
+  loadFocusSubtitleSettings();
+  applyFocusSubtitleSettings();
   let stored = false;
   try {
     stored = sessionStorage.getItem(SUBTITLE_FOCUS_KEY) === "1";
@@ -990,11 +1241,32 @@ historyOverlay.addEventListener("click", (event) => {
 if (btnSubtitleFocus) {
   btnSubtitleFocus.addEventListener("click", toggleSubtitleFocusMode);
 }
+if (btnSubtitleSettings) {
+  btnSubtitleSettings.addEventListener("click", openSubtitleSettingsPanel);
+}
+if (btnSubtitleSettingsClose) {
+  btnSubtitleSettingsClose.addEventListener("click", closeSubtitleSettingsPanel);
+}
+if (subtitleSettingsOverlay) {
+  subtitleSettingsOverlay.addEventListener("click", (event) => {
+    if (event.target === subtitleSettingsOverlay) {
+      closeSubtitleSettingsPanel();
+    }
+  });
+}
+if (subtitleSettingsForm) {
+  subtitleSettingsForm.addEventListener("submit", handleSubtitleSettingsSubmit);
+}
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") {
     return;
   }
   if (historyOverlay && !historyOverlay.classList.contains("hidden")) {
+    closeHistoryPanel();
+    return;
+  }
+  if (subtitleSettingsOverlay && !subtitleSettingsOverlay.classList.contains("hidden")) {
+    closeSubtitleSettingsPanel();
     return;
   }
   if (subtitleFocusMode) {
