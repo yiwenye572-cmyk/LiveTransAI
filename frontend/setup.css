@@ -188,7 +188,7 @@
 }
 
 .setup-accordion-tab::after {
-  background: rgba(35, 38, 45, 0.86);
+  background: rgba(35, 38, 45, 0.5);
   z-index: 0;
 }
 
@@ -204,7 +204,7 @@
 }
 
 .setup-accordion-tab:hover:not(:disabled)::after {
-  background: rgba(35, 38, 45, 0.82);
+  background: rgba(35, 38, 45, 0.44);
 }
 
 .setup-accordion-tab.is-expanded {
@@ -218,7 +218,7 @@
 }
 
 .setup-accordion-tab.is-expanded::after {
-  background: rgba(15, 70, 62, 0.88);
+  background: rgba(15, 70, 62, 0.55);
 }
 
 .setup-scenario-card.is-inactive::before {
@@ -226,11 +226,11 @@
 }
 
 .setup-scenario-card.is-inactive::after {
-  background: rgba(35, 38, 45, 0.92);
+  background: rgba(35, 38, 45, 0.62);
 }
 
 .setup-scenario-card.is-selected::after {
-  background: rgba(15, 70, 62, 0.88);
+  background: rgba(15, 70, 62, 0.55);
 }
 
 .setup-accordion-tab.is-loading {
