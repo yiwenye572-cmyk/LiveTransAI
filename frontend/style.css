@@ -760,5 +760,48 @@ button:disabled {
   .setup-view-back {
     display: inline-flex;
     align-items: center;
-  
+  }
 }
+
+/* ── Custom scrollbars (dark theme) ── */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(154, 160, 166, 0.45) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: rgba(154, 160, 166, 0.35);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(189, 193, 198, 0.55);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background-color: rgba(189, 193, 198, 0.7);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+html.metrics-page {
+  scrollbar-color: rgba(154, 160, 166, 0.45) rgba(15, 17, 21, 0.6);
+}
+
+html.metrics-page::-webkit-scrollbar-track {
+  background: rgba(15, 17, 21, 0.4);
+}
+
