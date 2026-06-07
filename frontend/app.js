@@ -34,6 +34,7 @@ const LOOPBACK_STORAGE_KEY = "livetransai-loopback-index";
 const TTS_OUTPUT_STORAGE_KEY = "livetransai-tts-output-id";
 const SUBTITLE_FOCUS_KEY = "livetransai_subtitle_focus";
 const FOCUS_SETTINGS_KEY = "livetransai_focus_subtitle_settings";
+const FOCUS_SUMMARY_OPEN_KEY = "livetransai_focus_summary_open";
 const DEFAULT_FOCUS_SETTINGS = {
   fontSize: "medium",
   showSource: true,
@@ -55,8 +56,15 @@ const focusSettingsShowTranslation = document.getElementById("focus-settings-sho
 const focusSettingsShowCorrection = document.getElementById("focus-settings-show-correction");
 const focusSettingsVisibleCount = document.getElementById("focus-settings-visible-count");
 const focusSettingsError = document.getElementById("focus-settings-error");
+const btnFocusSummary = document.getElementById("btn-focus-summary");
+const focusSummaryDrawer = document.getElementById("focus-summary-drawer");
+const focusSummaryMeta = document.getElementById("focus-summary-meta");
+const focusSummaryTopic = document.getElementById("focus-summary-topic");
+const focusSummaryTerms = document.getElementById("focus-summary-terms");
+const focusSummaryBullets = document.getElementById("focus-summary-bullets");
 
 let subtitleFocusMode = false;
+let focusSummaryOpen = false;
 let focusSubtitleSettings = { ...DEFAULT_FOCUS_SETTINGS };
 let subtitleBuffer = [];
 
@@ -706,30 +714,52 @@ function updateMetrics(payload) {
   updateCompactMetricsBar();
 }
 
-function renderSummary(payload) {
+function fillSummaryElements(metaEl, topicEl, termsEl, bulletsEl, payload) {
   const at = payload.updated_at_sentence ?? 0;
-  summaryMeta.textContent =
-    at > 0 ? `已更新至第 ${at} 句` : "会话主题将在翻译开始后自动生成";
+  if (metaEl) {
+    metaEl.textContent =
+      at > 0 ? `已更新至第 ${at} 句` : "会话主题将在翻译开始后自动生成";
+  }
 
   const topic = (payload.topic || "").trim();
-  summaryTopic.textContent = topic ? `主题：${topic}` : "主题：—";
+  if (topicEl) {
+    topicEl.textContent = topic ? `主题：${topic}` : "主题：—";
+  }
 
   const terms = payload.term_map || {};
   const termEntries = Object.entries(terms);
-  if (termEntries.length === 0) {
-    summaryTerms.textContent = "";
-  } else {
-    summaryTerms.innerHTML = termEntries
-      .map(([source, target]) => `<span class="summary-term">${escapeHtml(source)} → ${escapeHtml(target)}</span>`)
-      .join("");
+  if (termsEl) {
+    if (termEntries.length === 0) {
+      termsEl.textContent = "";
+    } else {
+      termsEl.innerHTML = termEntries
+        .map(
+          ([source, target]) =>
+            `<span class="summary-term">${escapeHtml(source)} → ${escapeHtml(target)}</span>`
+        )
+        .join("");
+    }
   }
 
-  summaryBullets.innerHTML = "";
-  for (const point of payload.bullet_points || []) {
-    const li = document.createElement("li");
-    li.textContent = point;
-    summaryBullets.appendChild(li);
+  if (bulletsEl) {
+    bulletsEl.innerHTML = "";
+    for (const point of payload.bullet_points || []) {
+      const li = document.createElement("li");
+      li.textContent = point;
+      bulletsEl.appendChild(li);
+    }
   }
+}
+
+function renderSummary(payload) {
+  fillSummaryElements(summaryMeta, summaryTopic, summaryTerms, summaryBullets, payload);
+  fillSummaryElements(
+    focusSummaryMeta,
+    focusSummaryTopic,
+    focusSummaryTerms,
+    focusSummaryBullets,
+    payload
+  );
 }
 
 function resetSummary() {
@@ -877,6 +907,37 @@ function handleSubtitleSettingsSubmit(event) {
   closeSubtitleSettingsPanel();
 }
 
+function setFocusSummaryDrawer(open) {
+  focusSummaryOpen = Boolean(open);
+  if (appRoot) {
+    appRoot.classList.toggle("focus-summary-open", focusSummaryOpen);
+  }
+  if (btnFocusSummary) {
+    btnFocusSummary.setAttribute("aria-expanded", focusSummaryOpen ? "true" : "false");
+    btnFocusSummary.textContent = focusSummaryOpen ? "摘要 ▴" : "摘要 ▾";
+  }
+  if (focusSummaryDrawer) {
+    focusSummaryDrawer.setAttribute("aria-hidden", focusSummaryOpen ? "false" : "true");
+  }
+  try {
+    if (focusSummaryOpen) {
+      sessionStorage.setItem(FOCUS_SUMMARY_OPEN_KEY, "1");
+    } else {
+      sessionStorage.removeItem(FOCUS_SUMMARY_OPEN_KEY);
+    }
+  } catch {
+    // ignore storage errors
+  }
+}
+
+function toggleFocusSummaryDrawer() {
+  setFocusSummaryDrawer(!focusSummaryOpen);
+}
+
+function closeFocusSummaryDrawer() {
+  setFocusSummaryDrawer(false);
+}
+
 function setSubtitleFocusMode(enabled) {
   subtitleFocusMode = Boolean(enabled);
   if (appRoot) {
@@ -892,6 +953,9 @@ function setSubtitleFocusMode(enabled) {
   if (btnSubtitleSettings) {
     btnSubtitleSettings.classList.toggle("hidden", !subtitleFocusMode);
   }
+  if (btnFocusSummary) {
+    btnFocusSummary.classList.toggle("hidden", !subtitleFocusMode);
+  }
   try {
     if (subtitleFocusMode) {
       sessionStorage.setItem(SUBTITLE_FOCUS_KEY, "1");
@@ -905,8 +969,16 @@ function setSubtitleFocusMode(enabled) {
   if (subtitleFocusMode) {
     applyFocusSubtitleSettings();
     renderVisibleSubtitles();
+    let drawerOpen = false;
+    try {
+      drawerOpen = sessionStorage.getItem(FOCUS_SUMMARY_OPEN_KEY) === "1";
+    } catch {
+      drawerOpen = false;
+    }
+    setFocusSummaryDrawer(drawerOpen);
   } else {
     closeSubtitleSettingsPanel();
+    closeFocusSummaryDrawer();
     renderAllSubtitlesToDom();
   }
 }
@@ -1241,6 +1313,9 @@ historyOverlay.addEventListener("click", (event) => {
 if (btnSubtitleFocus) {
   btnSubtitleFocus.addEventListener("click", toggleSubtitleFocusMode);
 }
+if (btnFocusSummary) {
+  btnFocusSummary.addEventListener("click", toggleFocusSummaryDrawer);
+}
 if (btnSubtitleSettings) {
   btnSubtitleSettings.addEventListener("click", openSubtitleSettingsPanel);
 }
@@ -1267,6 +1342,10 @@ document.addEventListener("keydown", (event) => {
   }
   if (subtitleSettingsOverlay && !subtitleSettingsOverlay.classList.contains("hidden")) {
     closeSubtitleSettingsPanel();
+    return;
+  }
+  if (subtitleFocusMode && focusSummaryOpen) {
+    closeFocusSummaryDrawer();
     return;
   }
   if (subtitleFocusMode) {
